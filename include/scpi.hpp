@@ -9,9 +9,10 @@ protected:
     std::iostream _fs;
 
     scpi(int fd);
-    virtual ~scpi();
 
 public:
+    virtual ~scpi();
+
     void send(std::string s);
     std::string recv();
     double recv_number();
