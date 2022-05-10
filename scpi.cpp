@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "yaml.hpp"
+
 using namespace std::string_literals;
 
 scpi::scpi(int fd) :
@@ -70,4 +72,25 @@ scpi_tty::scpi_tty(const std::string &dev) :
     int flag = TIOCM_DTR;
     if (ioctl(_fd, TIOCMBIC, &flag) == -1)
         throw std::runtime_error{ "ioctl:"s + std::strerror(errno) };
+}
+
+bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<scpi> *obj) {
+    if (n.has_val()) {
+        auto &&o = n["op"].val();
+        if (o == "virtual") obj->reset();
+        else throw std::runtime_error{ "Unknown scpi " + o };
+    } else {
+        auto &&o = n[0].key();
+        if (o == "tcp") {
+            std::string host;
+            int port;
+            n[0] >> host >> port;
+            *obj = std::make_unique<scpi_tcp>(host, port);
+        } else if (o == "tty") {
+            std::string dev;
+            n[0] >> dev;
+            *obj = std::make_unique<scpi_tty>(dev);
+        } else throw std::runtime_error{ "Unknown scpi " + o };
+    }
+    return true;
 }

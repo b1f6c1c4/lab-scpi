@@ -1,3 +1,5 @@
+#include <map>
+#include <memory>
 #include <string>
 #include <fstream>
 #include <ext/stdio_filebuf.h>
@@ -27,3 +29,10 @@ class scpi_tty : public scpi {
 public:
     scpi_tty(const std::string &dev);
 };
+
+using chnl_map = std::map<std::string, std::unique_ptr<scpi>>;
+
+namespace c4::yml {
+    class NodeRef;
+    bool read(const NodeRef &n, std::unique_ptr<scpi> *obj);
+}
