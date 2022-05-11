@@ -24,12 +24,14 @@ static void engineer_fmt(double v0) {
 }
 
 void formattor::show() {
-    std::cout << "\e[1,1H\e[2J\e1m[[[ " << profile->name << " ]]]\e0m\n";
+    std::cout << "\e[1,1H\e[2J\e[1m[[[ " << profile->name << " ]]]\e[0m\n";
     depth = 0;
     for (auto i = 0zu; auto &st : profile->steps) {
         std::cout << get_prefix(*st) << "[" << i++ << "] ";
         st->accept(*this);
+        std::cout << "\n";
     }
+    std::cout << std::endl;
 }
 
 const char *formattor::get_prefix(step::step &step) {
@@ -125,18 +127,20 @@ void *formattor::visit(step::user_input &step) {
 }
 
 void *formattor::visit(step::delay &step) {
-    std::cout << step.name << " (" << step.seconds << "s dly)\e[0m";
+    std::cout << step.name << " (" << step.seconds << "s delay)\e[0m";
     return nullptr;
 }
 
 void *formattor::visit(step::send &step) {
-    std::cout << step.name << " -> " << step.channel << " ";
-    std::cout << " " << step.cmd << "\e[0m";
+    std::cout << step.name << " ->" << step.channel;
+    if (step.status == step::step::CURRENT)
+        std::cout << " " << step.cmd;
+    std::cout << "\e[0m";
     return nullptr;
 }
 
 void *formattor::visit(step::recv &step) {
-    std::cout << step.name << " <- " << step.channel << " ";
+    std::cout << step.name << " " << step.channel << "->";
     switch (step.status) {
         case step::step::QUEUED:
             std::cout << "________ ";
@@ -151,6 +155,25 @@ void *formattor::visit(step::recv &step) {
             break;
     }
     std::cout << step.unit << "\e[0m";
+    return nullptr;
+}
+
+void *formattor::visit(step::recv_str &step) {
+    std::cout << step.name << " " << step.channel << "->";
+    switch (step.status) {
+        case step::step::QUEUED:
+            std::cout << "________ ";
+            break;
+        case step::step::CURRENT:
+            std::cout << "........ ";
+            break;
+        case step::step::FINISHED:
+            std::cout << "\e[1m";
+        case step::step::REVERTED:
+            step.value;
+            break;
+    }
+    std::cout << "\e[0m";
     return nullptr;
 }
 

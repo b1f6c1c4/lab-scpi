@@ -10,29 +10,40 @@ void *executor::visit(step::step_group &step) {
     std::cerr << "Finished executing grouped step " << step.name << std::endl;
     return nullptr;
 }
+
 void *executor::visit(step::confirm &step) {
     std::cerr << step.prompt << std::endl;
     std::cin.get();
     return nullptr;
 }
+
 void *executor::visit(step::user_input &step) {
     std::cerr << step.prompt << std::endl;
     std::cin >> step.value;
     while (std::cin.get() != '\n');
     return nullptr;
 }
+
 void *executor::visit(step::delay &step) {
     sleep(step.seconds);
     return nullptr;
 }
+
 void *executor::visit(step::send &step) {
     chnls->at(step.channel)->send(step.cmd);
     return nullptr;
 }
+
 void *executor::visit(step::recv &step) {
     step.value = chnls->at(step.channel)->recv_number();
     return nullptr;
 }
+
+void *executor::visit(step::recv_str &step) {
+    step.value = chnls->at(step.channel)->recv();
+    return nullptr;
+}
+
 void *executor::visit(step::math &step) {
     auto value = std::numeric_limits<double>::quiet_NaN();
     switch (step.op) {

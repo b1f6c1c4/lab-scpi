@@ -14,5 +14,8 @@ int main() {
 
     formattor fmt{};
     fmt.profile = profile;
+
+    profile->steps[1]->status = step::step::CURRENT;
+
     fmt.show();
 }

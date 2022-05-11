@@ -14,26 +14,44 @@
 
 using namespace std::string_literals;
 
-scpi::scpi(int fd) :
+fake_scpi::fake_scpi(std::string name) : _name{ std::move(name) } {
+    std::cout << "(fake-scpi " << _name << " connected)\n";
+}
+
+void fake_scpi::send(std::string s) {
+    std::cout << "(fake-scpi " << _name << " sending " << s << ")\n";
+}
+
+std::string fake_scpi::recv() {
+    std::cout << "(fake-scpi " << _name << " receiving)\n";
+    return _name;
+}
+
+double fake_scpi::recv_number() {
+    std::cout << "(fake-scpi " << _name << " receiving number)\n";
+    return 0;
+}
+
+fd_scpi::fd_scpi(int fd) :
     _fd{ fd },
     _fb{ fd, std::ios::in | std::ios::out },
     _fs{ &_fb } { }
 
-void scpi::send(std::string s) {
+void fd_scpi::send(std::string s) {
     _fs << s << std::endl;
 }
 
-scpi::~scpi() {
+fd_scpi::~fd_scpi() {
     _fb.close();
 }
 
-std::string scpi::recv() {
+std::string fd_scpi::recv() {
     std::string str;
     std::getline(_fs, str);
     return str;
 }
 
-double scpi::recv_number() {
+double fd_scpi::recv_number() {
     double n;
     _fs >> n;
     while (_fs.get() != '\n');
@@ -41,7 +59,7 @@ double scpi::recv_number() {
 }
 
 scpi_tcp::scpi_tcp(const std::string &host, int port) :
-    scpi{ [&]{
+    fd_scpi{ [&]{
         int sfd{ socket(AF_INET, SOCK_STREAM, 0) };
         if (sfd < 0)
             throw std::runtime_error{ "socket:"s + std::strerror(errno) };
@@ -63,7 +81,7 @@ scpi_tcp::scpi_tcp(const std::string &host, int port) :
     }() } { }
 
 scpi_tty::scpi_tty(const std::string &dev) :
-    scpi{ [&]{
+    fd_scpi{ [&]{
         auto fd = open(dev.data(), O_RDWR | O_NOCTTY);
         if (fd < 0)
             throw std::runtime_error{ "open:"s + std::strerror(errno) };
@@ -75,22 +93,19 @@ scpi_tty::scpi_tty(const std::string &dev) :
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<scpi> *obj) {
-    if (n.has_val()) {
-        auto &&o = n["op"].val();
-        if (o == "virtual") obj->reset();
-        else throw std::runtime_error{ "Unknown scpi " + o };
-    } else {
-        auto &&o = n[0].key();
-        if (o == "tcp") {
-            std::string host;
-            int port;
-            n[0] >> host >> port;
-            *obj = std::make_unique<scpi_tcp>(host, port);
-        } else if (o == "tty") {
-            std::string dev;
-            n[0] >> dev;
-            *obj = std::make_unique<scpi_tty>(dev);
-        } else throw std::runtime_error{ "Unknown scpi " + o };
-    }
+    auto &&o = n[0].key();
+    if (o == "tcp") {
+        std::string host;
+        int port;
+        n[0]["host"] >> host;
+        n[0]["port"] >> port;
+        *obj = std::make_unique<scpi_tcp>(host, port);
+    } else if (o == "tty") {
+        std::string dev;
+        n[0]["dev"] >> dev;
+        *obj = std::make_unique<scpi_tty>(dev);
+    } else if (o == "virtual") {
+        *obj = std::make_unique<fake_scpi>("f-" + n[0].val());
+    } else throw std::runtime_error{ "Unknown scpi " + o };
     return true;
 }

@@ -13,5 +13,6 @@ struct executor : step_visitor {
     void *visit(step::delay &step);
     void *visit(step::send &step);
     void *visit(step::recv &step);
+    void *visit(step::recv_str &step);
     void *visit(step::math &step);
 };

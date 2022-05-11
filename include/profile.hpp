@@ -15,6 +15,7 @@ namespace step {
     struct delay;
     struct send;
     struct recv;
+    struct recv_str;
     struct math;
 }
 
@@ -25,6 +26,7 @@ struct step_visitor {
     virtual void *visit(step::delay &step) = 0;
     virtual void *visit(step::send &step) = 0;
     virtual void *visit(step::recv &step) = 0;
+    virtual void *visit(step::recv_str &step) = 0;
     virtual void *visit(step::math &step) = 0;
 };
 
@@ -88,6 +90,13 @@ namespace step {
         void *accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
+    struct recv_str : step {
+        std::string channel;
+        std::string value;
+
+        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+    };
+
     struct math : valued_step {
         struct operand {
             enum {
@@ -139,6 +148,7 @@ namespace c4::yml {
     bool read(const NodeRef &n, step::delay *obj);
     bool read(const NodeRef &n, step::send *obj);
     bool read(const NodeRef &n, step::recv *obj);
+    bool read(const NodeRef &n, step::recv_str *obj);
     bool read(const NodeRef &n, step::math *obj);
     bool read(const NodeRef &n, step::math::operand *obj);
 }

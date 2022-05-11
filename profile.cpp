@@ -19,12 +19,17 @@ static void parse_path(const ryml::NodeRef &n, std::vector<size_t> &path) {
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
-    auto &&o = n["type"].val();
+    if (!n.has_val_tag())
+        std::cerr << n;
+    auto &&o = n.val_tag();
 #define T(ty) \
     do { \
-        if (o == #ty) { \
+        if (o == "!" #ty) { \
             auto step = new step::ty{}; \
-            n["name"] >> step->name; \
+            if (n.has_child("name")) \
+                n["name"] >> step->name; \
+            else \
+                step->name = "\b"; \
             step->status = step::step::QUEUED; \
             c4::yml::read(n, step); \
             *obj = std::unique_ptr<step::step>{ step }; \
@@ -37,25 +42,33 @@ bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
     T(delay);
     T(send);
     T(recv);
+    T(recv_str);
     T(math);
     throw std::runtime_error{ "Unknown type " + o };
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::step_group *obj) {
-    if (auto &&d = n["digest"]; d.has_val())
-        parse_path(d, obj->digest);
-    n["vertical"] >> obj->vertical;
+    if (n.has_child("digest"))
+        parse_path(n["digest"], obj->digest);
+    if (n.has_child("vertical"))
+        n["vertical"] >> obj->vertical;
+    else
+        obj->vertical = true;
     n["steps"] >> obj->steps;
     return true;
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::confirm *obj) {
-    n["prompt"] >> obj->prompt;
+    if (n.has_child("prompt"))
+        n["prompt"] >> obj->prompt;
     return true;
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::user_input *obj) {
-    n["prompt"] >> obj->prompt;
+    if (n.has_child("prompt"))
+        n["prompt"] >> obj->prompt;
+    if (n.has_child("unit"))
+        n["unit"] >> obj->unit;
     return true;
 }
 
@@ -72,16 +85,23 @@ bool c4::yml::read(const ryml::NodeRef &n, step::send *obj) {
 
 bool c4::yml::read(const ryml::NodeRef &n, step::recv *obj) {
     n["channel"] >> obj->channel;
+    if (n.has_child("unit"))
+        n["unit"] >> obj->unit;
+    return true;
+}
+
+bool c4::yml::read(const ryml::NodeRef &n, step::recv_str *obj) {
+    n["channel"] >> obj->channel;
     return true;
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::math::operand *obj) {
-    if (n.has_val()) {
+    if (!n.is_quoted()) {
         obj->kind = step::math::operand::DOUBLE;
         n >> obj->value;
     } else {
         obj->kind = step::math::operand::REFERENCE;
-        parse_path(n["ref"], obj->index);
+        parse_path(n, obj->index);
     }
     return true;
 }
@@ -95,6 +115,8 @@ double step::math::operand::operator()(steps_t &steps) {
     return std::numeric_limits<double>::quiet_NaN();
 }
 bool c4::yml::read(const ryml::NodeRef &n, step::math *obj) {
+    if (n.has_child("unit"))
+        n["unit"] >> obj->unit;
     n["operands"] >> obj->operands;
     auto &&o = n["op"].val();
     if (o == "+") obj->op = step::math::ADD;

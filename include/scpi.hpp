@@ -7,27 +7,45 @@
 #include <ext/stdio_filebuf.h>
 
 class scpi {
+public:
+    virtual void send(std::string s) = 0;
+    virtual std::string recv() = 0;
+    virtual double recv_number() = 0;
+};
+
+class fake_scpi : public scpi {
+    std::string _name;
+
+public:
+    explicit fake_scpi(std::string name);
+
+    void send(std::string s) override;
+    std::string recv() override;
+    double recv_number() override;
+};
+
+class fd_scpi : public scpi {
 protected:
     int _fd;
     __gnu_cxx::stdio_filebuf<char> _fb;
     std::iostream _fs;
 
-    scpi(int fd);
+    fd_scpi(int fd);
 
 public:
-    virtual ~scpi();
+    virtual ~fd_scpi();
 
-    void send(std::string s);
-    std::string recv();
-    double recv_number();
+    void send(std::string s) override;
+    std::string recv() override;
+    double recv_number() override;
 };
 
-class scpi_tcp : public scpi {
+class scpi_tcp : public fd_scpi {
 public:
     scpi_tcp(const std::string &host, int port);
 };
 
-class scpi_tty : public scpi {
+class scpi_tty : public fd_scpi {
 public:
     scpi_tty(const std::string &dev);
 };
