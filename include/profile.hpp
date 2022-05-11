@@ -1,4 +1,7 @@
+#pragma once
+
 #include <memory>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -31,12 +34,19 @@ namespace step {
 
     struct step {
         std::string name;
+        enum {
+            QUEUED,
+            CURRENT,
+            FINISHED,
+            REVERTED,
+        } status;
 
         virtual void *accept(step_visitor &sv) = 0;
     };
 
     struct valued_step : step {
         double value;
+        std::string unit;
     };
 
     struct step_group : step {
@@ -99,6 +109,12 @@ namespace step {
     };
 
 }
+
+struct profile_t {
+    std::string name;
+    step::steps_t steps;
+    std::stack<size_t> index;
+};
 
 namespace c4::yml {
     class NodeRef;

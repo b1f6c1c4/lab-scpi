@@ -13,6 +13,7 @@ bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
         if (o == #ty) { \
             auto step = new step::ty{}; \
             n["name"] >> step->name; \
+            step->status = step::step::QUEUED; \
             c4::yml::read(n, step); \
             *obj = std::unique_ptr<step::step>{ step }; \
             return true; \

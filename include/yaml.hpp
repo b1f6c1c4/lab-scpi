@@ -1,3 +1,5 @@
+#pragma once
+
 #include <rapidyaml.hpp>
 
 using namespace std::string_literals;
