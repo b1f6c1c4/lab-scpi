@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
+#include <json.hpp>
 
 static void parse_path(const ryml::NodeRef &n, std::vector<size_t> &path) {
     std::string str;
@@ -110,7 +111,13 @@ double step::math::operand::operator()(steps_t &steps) {
         case DOUBLE:
             return value;
         case REFERENCE:
-            return dynamic_cast<valued_step *>(get(steps, index))->value;
+            auto ptr = get(steps, index);
+again:
+            if (auto grp = dynamic_cast<step_group *>(ptr); grp && !grp->digest.empty()) {
+                ptr = get(grp->steps, grp->digest);
+                goto again;
+            }
+            return dynamic_cast<valued_step *>(ptr)->value;
     }
     return std::numeric_limits<double>::quiet_NaN();
 }
@@ -129,4 +136,68 @@ bool c4::yml::read(const ryml::NodeRef &n, step::math *obj) {
 
 step::step &profile_t::operator()() {
     return *step::get(steps, current);
+}
+
+namespace nlohmann {
+
+    template <>
+    struct adl_serializer<step::steps_t> {
+        static void from_json(const json &j, step::steps_t &vec);
+        static void to_json(json &j, const step::steps_t &vec);
+    };
+
+    template <>
+    struct adl_serializer<std::unique_ptr<step::step>> {
+        static void from_json(const json &j, std::unique_ptr<step::step> &step) {
+            step->status = j["status"];
+            if (auto st = dynamic_cast<step::valued_step *>(step.get()); st)
+                st->value = j["value"];
+            else if (auto st = dynamic_cast<step::recv_str *>(step.get()); st)
+                st->value = j["string"];
+            else if (auto st = dynamic_cast<step::step_group *>(step.get()); st)
+                j["steps"].get_to(st->steps);
+        }
+
+        static void to_json(nlohmann::json &j, const std::unique_ptr<step::step> &step) {
+            j["name"] = step->name;
+            j["status"] = step->status;
+            if (auto st = dynamic_cast<step::valued_step *>(step.get()); st)
+                j["value"] = st->value;
+            else if (auto st = dynamic_cast<step::recv_str *>(step.get()); st)
+                j["string"] = st->value;
+            else if (auto st = dynamic_cast<step::step_group *>(step.get()); st)
+                j["steps"] = st->steps;
+        }
+    };
+
+    void adl_serializer<step::steps_t>::from_json(const json &j, step::steps_t &vec) {
+        for (auto it = vec.begin(); auto &k : j) {
+            if (it == vec.end())
+                throw std::runtime_error{ "Size not match: json is " + std::to_string(j.size()) + " steps_t is " + std::to_string(vec.size()) };
+            k.get_to(*it++);
+        }
+    }
+    void adl_serializer<step::steps_t>::to_json(json &j, const step::steps_t &vec) {
+        j = {};
+        for (auto &v : vec)
+            j.push_back(v);
+    }
+
+}
+
+std::istream &operator>>(std::istream &is, profile_t &profile) {
+    nlohmann::json j{};
+    is >> j;
+    profile.name = j["name"];
+    j["steps"].get_to(profile.steps);
+    j["current"].get_to(profile.current);
+    return is;
+}
+
+std::ostream &operator<<(std::ostream &os, const profile_t &profile) {
+    nlohmann::json j{};
+    j["name"] = profile.name;
+    j["steps"] = profile.steps;
+    j["current"] = profile.current;
+    return os << j.dump(2) << std::endl;
 }

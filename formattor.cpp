@@ -28,7 +28,11 @@ void formattor::show() {
     depth = 0;
     for (auto i = 0zu; auto &st : profile->steps) {
         std::cout << get_prefix(*st) << "[" << i++ << "] ";
-        st->accept(*this);
+        try {
+            st->accept(*this);
+        } catch (const std::exception &e) {
+            std::cout << e.what();
+        }
         std::cout << "\n";
     }
     std::cout << std::endl;
@@ -83,7 +87,11 @@ bad:
             for (auto j = 0zu; j < depth; j++)
                 std::cout << "    ";
         std::cout << get_prefix(*st) << "[" << i++ << "] ";
-        st->accept(*this);
+        try {
+            st->accept(*this);
+        } catch (const std::exception &e) {
+            std::cout << e.what();
+        }
     }
     depth--;
     return nullptr;
@@ -168,7 +176,7 @@ void *formattor::visit(step::recv_str &step) {
             std::cout << "........ ";
             break;
         case step::step::FINISHED:
-            std::cout << "\e[1m";
+            std::cout << step.value << "\e[1m";
         case step::step::REVERTED:
             step.value;
             break;

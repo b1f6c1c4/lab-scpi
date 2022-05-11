@@ -139,6 +139,9 @@ struct profile_t {
     step::step &operator()();
 };
 
+std::istream &operator>>(std::istream &is, profile_t &cpp);
+std::ostream &operator<<(std::ostream &os, const profile_t &cpp);
+
 namespace c4::yml {
     class NodeRef;
     bool read(const NodeRef &n, std::unique_ptr<step::step> *obj);

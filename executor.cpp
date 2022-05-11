@@ -2,13 +2,49 @@
 
 #include <iostream>
 #include <limits>
+#include <cassert>
+
+// return false: is finished
+// return true: more next() required
+bool executor::next() {
+    depth = 0;
+    return exec(profile->steps);
+}
+
+// return false: shall increment counter
+// return true: shall not increment counter
+bool executor::exec(step::steps_t &steps) {
+    auto is_new = depth == profile->current.size();
+    if (is_new)
+        profile->current.push_back(0);
+    assert(depth < profile->current.size());
+    auto &pcd = profile->current[depth];
+    if (pcd == steps.size()) {
+        profile->current.pop_back();
+        return false;
+    }
+    steps[pcd]->status = step::step::CURRENT;
+    if (is_new && dynamic_cast<step::step_group *>(steps[pcd].get()))
+        return true;
+    ns = &steps;
+    if (!steps[pcd]->accept(*this)) {
+        steps[pcd]->status = step::step::FINISHED;
+        pcd++;
+    }
+    if (pcd < steps.size()) {
+        steps[pcd]->status = step::step::CURRENT;
+        return true;
+    }
+    assert(depth == profile->current.size() - 1);
+    profile->current.pop_back();
+    return false;
+}
 
 void *executor::visit(step::step_group &step) {
-    std::cerr << "Executing grouped step " << step.name << std::endl;
-    for (auto &st : profile->steps)
-        st->accept(*this);
-    std::cerr << "Finished executing grouped step " << step.name << std::endl;
-    return nullptr;
+    depth++;
+    auto ans = exec(step.steps);
+    depth--;
+    return ans ? this : nullptr;
 }
 
 void *executor::visit(step::confirm &step) {
@@ -50,28 +86,28 @@ void *executor::visit(step::math &step) {
         case step::math::ADD:
             value = 0;
             for (auto &o : step.operands)
-                value += o(profile->steps);
+                value += o(*ns);
             break;
         case step::math::SUB:
             value = 0;
             for (auto flag = true; auto &o : step.operands)
                 if (flag)
-                    value = o(profile->steps), flag = false;
+                    value = o(*ns), flag = false;
                 else
-                    value -= o(profile->steps);
+                    value -= o(*ns);
             break;
         case step::math::MUL:
             value = 1;
             for (auto &o : step.operands)
-                value *= o(profile->steps);
+                value *= o(*ns);
             break;
         case step::math::DIV:
             value = 1;
             for (auto flag = true; auto &o : step.operands)
                 if (flag)
-                    value = o(profile->steps), flag = false;
+                    value = o(*ns), flag = false;
                 else
-                    value /= o(profile->steps);
+                    value /= o(*ns);
             break;
     }
     step.value = value;

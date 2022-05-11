@@ -6,6 +6,11 @@
 struct executor : step_visitor {
     std::shared_ptr<chnl_map> chnls;
     std::shared_ptr<profile_t> profile;
+    size_t depth;
+    step::steps_t *ns;
+
+    bool next();
+    bool exec(step::steps_t &steps);
 
     void *visit(step::step_group &step);
     void *visit(step::confirm &step);
