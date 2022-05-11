@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <stack>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -51,6 +51,8 @@ namespace step {
 
     struct step_group : step {
         steps_t steps;
+        std::vector<size_t> digest;
+        bool vertical;
 
         void *accept(step_visitor &sv) override { return sv.visit(*this); }
     };
@@ -108,12 +110,24 @@ namespace step {
         void *accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
+    template <typename TContainer>
+    auto get(steps_t &steps, TContainer &&cont) {
+        step *last{};
+        for (auto ptr = &steps; auto &&id : cont) {
+            last = ptr->at(id).get();
+            if (auto grp = dynamic_cast<step_group *>(last); grp)
+                ptr = &grp->steps;
+        }
+        return last;
+    }
 }
 
 struct profile_t {
     std::string name;
     step::steps_t steps;
-    std::stack<size_t> index;
+    std::deque<size_t> current;
+
+    step::step &operator()();
 };
 
 namespace c4::yml {

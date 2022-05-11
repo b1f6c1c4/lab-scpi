@@ -6,6 +6,18 @@
 #include <limits>
 #include <sstream>
 
+static void parse_path(const ryml::NodeRef &n, std::vector<size_t> &path) {
+    std::string str;
+    n >> str;
+    std::stringstream ss{ str };
+    while (!ss.eof()) {
+        std::string line;
+        std::getline(ss, line, '.');
+        if (line.size())
+            path.push_back(std::stoul(line));
+    }
+}
+
 bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
     auto &&o = n["type"].val();
 #define T(ty) \
@@ -30,6 +42,9 @@ bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::step_group *obj) {
+    if (auto &&d = n["digest"]; d.has_val())
+        parse_path(d, obj->digest);
+    n["vertical"] >> obj->vertical;
     n["steps"] >> obj->steps;
     return true;
 }
@@ -66,15 +81,7 @@ bool c4::yml::read(const ryml::NodeRef &n, step::math::operand *obj) {
         n >> obj->value;
     } else {
         obj->kind = step::math::operand::REFERENCE;
-        std::string str;
-        n["ref"] >> str;
-        std::stringstream ss{ str };
-        while (!ss.eof()) {
-            std::string line;
-            std::getline(ss, line, '.');
-            if (line.size())
-                obj->index.push_back(std::stoul(line));
-        }
+        parse_path(n["ref"], obj->index);
     }
     return true;
 }
@@ -83,10 +90,7 @@ double step::math::operand::operator()(steps_t &steps) {
         case DOUBLE:
             return value;
         case REFERENCE:
-            auto ptr = steps[index[0]].get();
-            for (auto id : index)
-                ptr = dynamic_cast<step_group *>(ptr)->steps[id].get();
-            return dynamic_cast<valued_step *>(ptr)->value;
+            return dynamic_cast<valued_step *>(get(steps, index))->value;
     }
     return std::numeric_limits<double>::quiet_NaN();
 }
@@ -99,4 +103,8 @@ bool c4::yml::read(const ryml::NodeRef &n, step::math *obj) {
     else if (o == "/") obj->op = step::math::DIV;
     else throw std::runtime_error{ "Unknown op " + o };
     return true;
+}
+
+step::step &profile_t::operator()() {
+    return *step::get(steps, current);
 }

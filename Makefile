@@ -2,7 +2,7 @@ CXXFLAGS=-std=c++2b -Wno-trigraphs -O2 -Iinclude/ -Ivendor/
 
 .DEFAULT: build/lab
 
-build/lab: build/scpi.o build/profile.o build/executor.o build/formattor.o build/yaml.o
+build/lab: build/scpi.o build/profile.o build/executor.o build/formattor.o build/yaml.o build/main.o
 	$(CXX) $(LDFLAGS) $(CFLAGS) $(CXXFLAGS) $^ -o $@
 
 build/%.o: %.cpp
@@ -17,3 +17,5 @@ build/executor.o: vendor/rapidyaml.hpp include/scpi.hpp include/profile.hpp incl
 build/formattor.o: include/formattor.hpp
 
 build/yaml.o: vendor/rapidyaml.hpp
+
+build/main.o: include/executor.hpp include/formattor.hpp include/profile.hpp include/scpi.hpp include/yaml.hpp

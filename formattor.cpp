@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <cmath>
 
-static void fmt(double v0) {
+static void engineer_fmt(double v0) {
     std::cout << std::setprecision(5);
     auto v = v0 < 0 ? -v0 : v0;
     if (std::isnan(v0) || v >= 1e27 || v < 1e-24) {
@@ -23,6 +23,15 @@ static void fmt(double v0) {
     std::cout << std::setprecision(6) << std::defaultfloat;
 }
 
+void formattor::show() {
+    std::cout << "\e[1,1H\e[2J\e1m[[[ " << profile->name << " ]]]\e0m\n";
+    depth = 0;
+    for (auto i = 0zu; auto &st : profile->steps) {
+        std::cout << get_prefix(*st) << "[" << i++ << "] ";
+        st->accept(*this);
+    }
+}
+
 const char *formattor::get_prefix(step::step &step) {
     switch (step.status) {
         case step::step::QUEUED:
@@ -38,13 +47,40 @@ const char *formattor::get_prefix(step::step &step) {
 }
 
 void *formattor::visit(step::step_group &step) {
-    std::cout << step.name << "\e[0m\n";
-    for (auto i = 0zu; i < depth; i++)
-        std::cout << "    ";
+    std::cout << step.name;
+    switch (step.status) {
+        case step::step::CURRENT:
+            break;
+        case step::step::REVERTED:
+        case step::step::FINISHED:
+            if (auto st = dynamic_cast<step::valued_step *>(step::get(step.steps, step.digest)); st) {
+                switch (st->status) {
+                    case step::step::QUEUED:
+                    case step::step::CURRENT:
+                        goto bad;
+                    case step::step::FINISHED:
+                        std::cout << "\e[1m";
+                    case step::step::REVERTED:
+                        std::cout << " => ";
+                        engineer_fmt(st->value);
+                        break;
+                }
+                std::cout << st->unit << "\e[0m";
+            }
+        case step::step::QUEUED:
+bad:
+            std::cout << "\e[0m";
+            return nullptr;
+    }
+    std::cout << "\e[0\nm";
     depth++;
-    auto i = 0zu;
-    for (auto &st : step.steps) {
-        std::cout << get_prefix(step) << "[" << i++ << "] ";
+    for (auto i = 0zu; auto &st : step.steps) {
+        if (i)
+            std::cout << (step.vertical ? '\n' : '\t');
+        if (step.vertical)
+            for (auto j = 0zu; j < depth; j++)
+                std::cout << "    ";
+        std::cout << get_prefix(*st) << "[" << i++ << "] ";
         st->accept(*this);
     }
     depth--;
@@ -55,17 +91,17 @@ void *formattor::visit(step::confirm &step) {
     std::cout << step.name << " ";
     switch (step.status) {
         case step::step::QUEUED:
-        case step::step::REVERTED:
-            std::cout << "yes";
+            std::cout << "<y/n>";
             break;
         case step::step::CURRENT:
             std::cout << "<Y/N?>";
             break;
         case step::step::FINISHED:
-            std::cout << "<y/n>";
+        case step::step::REVERTED:
+            std::cout << "yes";
             break;
     }
-    std::cout << "\e[0m\n";
+    std::cout << "\e[0m";
     return nullptr;
 }
 
@@ -73,29 +109,29 @@ void *formattor::visit(step::user_input &step) {
     std::cout << step.name << " ";
     switch (step.status) {
         case step::step::QUEUED:
-            std::cout << "\e[1m";
-        case step::step::REVERTED:
-            fmt(step.value);
+            std::cout << "<______> ";
             break;
         case step::step::CURRENT:
             std::cout << "<??????> ";
             break;
         case step::step::FINISHED:
-            std::cout << "<______> ";
+            std::cout << "\e[1m";
+        case step::step::REVERTED:
+            engineer_fmt(step.value);
             break;
     }
-    std::cout << step.unit << "\e[0m\n";
+    std::cout << step.unit << "\e[0m";
     return nullptr;
 }
 
 void *formattor::visit(step::delay &step) {
-    std::cout << step.name << " (" << step.seconds << "s dly)\e[0m\n";
+    std::cout << step.name << " (" << step.seconds << "s dly)\e[0m";
     return nullptr;
 }
 
 void *formattor::visit(step::send &step) {
     std::cout << step.name << " -> " << step.channel << " ";
-    std::cout << " " << step.cmd << "\e[0m\n";
+    std::cout << " " << step.cmd << "\e[0m";
     return nullptr;
 }
 
@@ -103,18 +139,18 @@ void *formattor::visit(step::recv &step) {
     std::cout << step.name << " <- " << step.channel << " ";
     switch (step.status) {
         case step::step::QUEUED:
-            std::cout << "\e[1m";
-        case step::step::REVERTED:
-            fmt(step.value);
+            std::cout << "________ ";
             break;
         case step::step::CURRENT:
             std::cout << "........ ";
             break;
         case step::step::FINISHED:
-            std::cout << "________ ";
+            std::cout << "\e[1m";
+        case step::step::REVERTED:
+            engineer_fmt(step.value);
             break;
     }
-    std::cout << step.unit << "\e[0m\n";
+    std::cout << step.unit << "\e[0m";
     return nullptr;
 }
 
@@ -122,15 +158,16 @@ void *formattor::visit(step::math &step) {
     std::cout << step.name << " ";
     switch (step.status) {
         case step::step::QUEUED:
-            std::cout << "\e[1m";
-        case step::step::REVERTED:
-            fmt(step.value);
-            break;
-        case step::step::CURRENT:
-        case step::step::FINISHED:
             std::cout << " (expr)  ";
             break;
+        case step::step::CURRENT:
+            std::cout << " (....)  ";
+        case step::step::FINISHED:
+            std::cout << "\e[1m";
+        case step::step::REVERTED:
+            engineer_fmt(step.value);
+            break;
     }
-    std::cout << step.unit << "\e[0m\n";
+    std::cout << step.unit << "\e[0m";
     return nullptr;
 }
