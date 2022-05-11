@@ -3,7 +3,7 @@
 #include "profile.hpp"
 
 struct formattor : step_visitor {
-    std::shared_ptr<profile_t> profile;
+    profile_t *profile;
 
     void show();
 

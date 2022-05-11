@@ -4,8 +4,8 @@
 #include "scpi.hpp"
 
 struct executor : step_visitor {
-    std::shared_ptr<chnl_map> chnls;
-    std::shared_ptr<profile_t> profile;
+    chnl_map *chnls;
+    profile_t *profile;
     size_t depth;
     step::steps_t *ns;
 

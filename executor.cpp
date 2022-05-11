@@ -56,7 +56,6 @@ void *executor::visit(step::confirm &step) {
 void *executor::visit(step::user_input &step) {
     std::cerr << step.prompt << std::endl;
     std::cin >> step.value;
-    while (std::cin.get() != '\n');
     return nullptr;
 }
 

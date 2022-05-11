@@ -2,8 +2,14 @@
 #include "formattor.hpp"
 #include "scpi.hpp"
 #include "yaml.hpp"
+#include "fancy_cin.hpp"
 
+#include <csignal>
 #include <fstream>
+
+void sigint_handler(int sig) {
+    std::cout << ">SIGINT<" << std::endl;
+}
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -15,36 +21,38 @@ int main(int argc, char *argv[]) {
     auto tree = parse_string(str);
     tree.resolve();
 
-    auto chnls = std::make_shared<chnl_map>();
-    tree["channels"] >> *chnls;
+    chnl_map chnls;
+    tree["channels"] >> chnls;
 
-    auto profile = std::make_shared<profile_t>();
-    tree["steps"] >> profile->steps;
+    profile_t profile;
+    tree["steps"] >> profile.steps;
 
-    {
-        std::ifstream fin{ argv[2] };
-        if (fin.good())
-            fin >> *profile;
-        else {
-            std::cerr << "Warning: Cannot open the file " << argv[2] << " for reading\n";
-            sleep(1);
-        }
+    if (std::ifstream fin{ argv[2] }; fin.good()) {
+        fin >> profile;
+    } else {
+        std::cout << "Warning: Cannot open the file " << argv[2] << " for reading\n";
+        std::cout << "\e[1m\e[35mPlease indicate the name of the new profile:\e[0m" << std::endl;
+        std::getline(std::cin, profile.name);
     }
 
+    fancy::init();
     formattor fmt{};
     executor exc{};
-    fmt.profile = profile;
-    exc.chnls = chnls;
-    exc.profile = profile;
+    fmt.profile = &profile;
+    exc.chnls = &chnls;
+    exc.profile = &profile;
 
+    std::signal(SIGINT, &sigint_handler);
     do {
         fmt.show();
     } while (exc.next());
     fmt.show();
     sleep(1);
 
-    {
-        std::ofstream fout{ argv[2] };
-        fout << *profile;
+    if (std::ofstream fout{ argv[2] }; fout.good()) {
+        fout << profile;
+    } else {
+        std::cout << "Warning: Cannot open the file " << argv[2] << " for writing, writing to stdout instead\n\n";
+        std::cout << profile;
     }
 }

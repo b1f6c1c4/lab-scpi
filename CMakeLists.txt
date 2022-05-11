@@ -9,6 +9,7 @@ add_executable(lab
 	profile.cpp
 	scpi.cpp
 	yaml.cpp
+	fancy_cin.cpp
 	executor.cpp
 	formattor.cpp)
 target_compile_options(lab PRIVATE -Wno-trigraphs)
