@@ -4,29 +4,31 @@
 #include <limits>
 #include <cassert>
 
+#include "fancy_cin.hpp"
+
 // return false: is finished
 // return true: more next() required
 bool executor::next() {
-    depth = 0;
-    return exec(profile->steps);
+    _depth = 0;
+    return exec(_profile->steps);
 }
 
 // return false: shall increment counter
 // return true: shall not increment counter
 bool executor::exec(step::steps_t &steps) {
-    auto is_new = depth == profile->current.size();
+    auto is_new = _depth == _profile->current.size();
     if (is_new)
-        profile->current.push_back(0);
-    assert(depth < profile->current.size());
-    auto &pcd = profile->current[depth];
+        _profile->current.push_back(0);
+    assert(_depth < _profile->current.size());
+    auto &pcd = _profile->current[_depth];
     if (pcd == steps.size()) {
-        profile->current.pop_back();
+        _profile->current.pop_back();
         return false;
     }
     steps[pcd]->status = step::step::CURRENT;
-    if (is_new && dynamic_cast<step::step_group *>(steps[pcd].get()))
+    if (is_new && !dynamic_cast<step::step_group *>(steps[pcd].get()))
         return true;
-    ns = &steps;
+    _ns = &steps;
     if (!steps[pcd]->accept(*this)) {
         steps[pcd]->status = step::step::FINISHED;
         pcd++;
@@ -35,27 +37,30 @@ bool executor::exec(step::steps_t &steps) {
         steps[pcd]->status = step::step::CURRENT;
         return true;
     }
-    assert(depth == profile->current.size() - 1);
-    profile->current.pop_back();
+    assert(_depth == _profile->current.size() - 1);
+    _profile->current.pop_back();
     return false;
 }
 
 void *executor::visit(step::step_group &step) {
-    depth++;
+    _depth++;
     auto ans = exec(step.steps);
-    depth--;
+    _depth--;
     return ans ? this : nullptr;
 }
 
 void *executor::visit(step::confirm &step) {
-    std::cerr << step.prompt << std::endl;
-    std::cin.get();
-    return nullptr;
+    std::cout << step.prompt << "\n> " << std::flush;
+    auto ui = fancy::request_string();
+    return ui.kind == fancy::STRING ? nullptr : this;
 }
 
 void *executor::visit(step::user_input &step) {
-    std::cerr << step.prompt << std::endl;
-    std::cin >> step.value;
+    std::cout << step.prompt << "\n> " << std::flush;
+    auto ui = fancy::request_double();
+    if (ui.kind != fancy::DOUBLE)
+        return this;
+    step.value = ui.value;
     return nullptr;
 }
 
@@ -65,17 +70,17 @@ void *executor::visit(step::delay &step) {
 }
 
 void *executor::visit(step::send &step) {
-    chnls->at(step.channel)->send(step.cmd);
+    _chnls->at(step.channel)->send(step.cmd);
     return nullptr;
 }
 
 void *executor::visit(step::recv &step) {
-    step.value = chnls->at(step.channel)->recv_number();
+    step.value = _chnls->at(step.channel)->recv_number();
     return nullptr;
 }
 
 void *executor::visit(step::recv_str &step) {
-    step.value = chnls->at(step.channel)->recv();
+    step.value = _chnls->at(step.channel)->recv();
     return nullptr;
 }
 
@@ -85,28 +90,28 @@ void *executor::visit(step::math &step) {
         case step::math::ADD:
             value = 0;
             for (auto &o : step.operands)
-                value += o(*ns);
+                value += o(*_ns);
             break;
         case step::math::SUB:
             value = 0;
             for (auto flag = true; auto &o : step.operands)
                 if (flag)
-                    value = o(*ns), flag = false;
+                    value = o(*_ns), flag = false;
                 else
-                    value -= o(*ns);
+                    value -= o(*_ns);
             break;
         case step::math::MUL:
             value = 1;
             for (auto &o : step.operands)
-                value *= o(*ns);
+                value *= o(*_ns);
             break;
         case step::math::DIV:
             value = 1;
             for (auto flag = true; auto &o : step.operands)
                 if (flag)
-                    value = o(*ns), flag = false;
+                    value = o(*_ns), flag = false;
                 else
-                    value /= o(*ns);
+                    value /= o(*_ns);
             break;
     }
     step.value = value;

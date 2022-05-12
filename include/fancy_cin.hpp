@@ -6,6 +6,7 @@ namespace fancy {
     void quit();
 
     enum kind_t {
+        NONE,
         SIGNAL,
         CHAR,
         CTRL_CHAR,

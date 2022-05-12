@@ -7,15 +7,18 @@
 #include <fstream>
 
 void show_help() {
-    std::cout << R"(Help
+    std::cout << R"(==== Help ====
 Ctrl-D: Quit and save
+Ctrl-Q: Quit and discard
 Ctrl-C: Interrupt
-r: Restart everything
-c: Start/Continue execution
-Enter: Step-in
-s: Step-in
-n: Step-over
-f: Step-out
+r/Home: Reverse everything
+c/Enter: Start/Continue execution
+s/Right: Step-in
+n/Down: Step-over
+f/End: Step-out
+Backscape: Reverse step-in
+Up: Reverse step-over
+Left: Reverse step-out
 )" << std::flush;
 }
 
@@ -46,8 +49,8 @@ int main(int argc, char *argv[]) {
     formattor fmt{};
     executor exc{};
     fmt.profile = &profile;
-    exc.chnls = &chnls;
-    exc.profile = &profile;
+    exc._chnls = &chnls;
+    exc._profile = &profile;
 
     fancy::init();
     while (true) {
@@ -63,8 +66,13 @@ again:
                 switch (ui.chr) {
                     case 'D':
                         goto quitting;
-                    case 'M':
-                        exc.next();
+                    case 'Q':
+                        return 0;
+                    case 'M': // Enter
+                        exc.start();
+                        continue;
+                    case 'H': // Backscape
+                        exc.reverse_step_in();
                         continue;
                     default:
                         std::cout << "Unexpected command Ctrl-" << ui.chr << std::endl;
@@ -72,10 +80,20 @@ again:
                 }
             case fancy::CHAR:
                 switch (ui.chr) {
+                    case 'r':
+                        exc.reset();
+                        continue;
+                    case 'c':
+                        exc.start();
+                        continue;
                     case 's':
+                        exc.step_in();
+                        continue;
                     case 'n':
+                        exc.step_over();
+                        continue;
                     case 'f':
-                        exc.next();
+                        exc.step_out();
                         continue;
                     case 'h':
                     case '?':
@@ -88,17 +106,23 @@ again:
             case fancy::ESCAPE:
                 switch (ui.escape) {
                     case fancy::escape_t::LEFT:
-                        std::cout << "<-" << std::endl;
-                        goto again;
+                        exc.reverse_step_out();
+                        continue;
                     case fancy::escape_t::RIGHT:
-                        std::cout << "->" << std::endl;
-                        goto again;
+                        exc.step_in();
+                        continue;
                     case fancy::escape_t::UP:
-                        std::cout << "^^" << std::endl;
-                        goto again;
+                        exc.reverse_step_over();
+                        continue;
                     case fancy::escape_t::DOWN:
-                        std::cout << "vv" << std::endl;
-                        goto again;
+                        exc.step_over();
+                        continue;
+                    case fancy::escape_t::HOME:
+                        exc.reset();
+                        continue;
+                    case fancy::escape_t::END:
+                        exc.step_out();
+                        continue;
                     case fancy::escape_t::F1:
                         show_help();
                         goto again;
@@ -118,6 +142,4 @@ quitting:
         std::cout << "Warning: Cannot open the file " << argv[2] << " for writing, writing to stdout instead\n\n";
         std::cout << profile;
     }
-
-    fancy::quit();
 }

@@ -186,7 +186,7 @@ again:
         }
     }
 
-    user_input request_line() {
+    user_input request_string() {
         make_canon();
         user_input ui;
 again:
@@ -228,7 +228,7 @@ again:
     }
 
     user_input request_double() {
-        auto ui = request_line();
+        auto ui = request_string();
         if (!ui.kind == STRING)
             return ui;
         char *end;
