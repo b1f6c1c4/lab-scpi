@@ -4,12 +4,7 @@
 #include "yaml.hpp"
 #include "fancy_cin.hpp"
 
-#include <csignal>
 #include <fstream>
-
-void sigint_handler(int sig) {
-    std::cout << ">SIGINT<" << std::endl;
-}
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -35,19 +30,51 @@ int main(int argc, char *argv[]) {
         std::getline(std::cin, profile.name);
     }
 
-    fancy::init();
     formattor fmt{};
     executor exc{};
     fmt.profile = &profile;
     exc.chnls = &chnls;
     exc.profile = &profile;
 
-    std::signal(SIGINT, &sigint_handler);
-    do {
+    fancy::init();
+    while (true) {
         fmt.show();
-    } while (exc.next());
-    fmt.show();
-    sleep(1);
+again:
+        std::cout << "NORMAL mode, command requested" << std::endl;
+        auto ui = fancy::event_loop();
+        switch (ui.kind) {
+            case fancy::user_input::SIGNAL:
+                std::cout << "To quit, press  Ctrl-D" << std::endl;
+                goto again;
+            case fancy::user_input::CONTROL:
+                switch (ui.control) {
+                    case 's':
+                    case '\n':
+                    case 'n':
+                    case 'f':
+                        exc.next();
+                        continue;
+                    case '?':
+                        std::cout << R"(Help
+Ctrl-D: Quit and save
+Ctrl-C: Interrupt
+r: Restart everything
+c: Start/Continue execution
+Enter: Step-in
+s: Step-in
+n: Step-over
+f: Step-out
+)" << std::flush;
+                        goto again;
+                    default:
+                        std::cout << "Unexpected command " << ui.control << std::endl;
+                        goto again;
+                }
+            case fancy::user_input::CTRL_D:
+                goto quitting;
+        }
+    }
+quitting:
 
     if (std::ofstream fout{ argv[2] }; fout.good()) {
         fout << profile;
@@ -55,4 +82,6 @@ int main(int argc, char *argv[]) {
         std::cout << "Warning: Cannot open the file " << argv[2] << " for writing, writing to stdout instead\n\n";
         std::cout << profile;
     }
+
+    fancy::quit();
 }
