@@ -6,6 +6,19 @@
 
 #include <fstream>
 
+void show_help() {
+    std::cout << R"(Help
+Ctrl-D: Quit and save
+Ctrl-C: Interrupt
+r: Restart everything
+c: Start/Continue execution
+Enter: Step-in
+s: Step-in
+n: Step-over
+f: Step-out
+)" << std::flush;
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         std::cerr << "Usage: lab <profile.yaml> <data.json>\n";
@@ -39,38 +52,61 @@ int main(int argc, char *argv[]) {
     fancy::init();
     while (true) {
         fmt.show();
-again:
         std::cout << "NORMAL mode, command requested" << std::endl;
+again:
         auto ui = fancy::event_loop();
         switch (ui.kind) {
-            case fancy::user_input::SIGNAL:
+            case fancy::SIGNAL:
                 std::cout << "To quit, press  Ctrl-D" << std::endl;
                 goto again;
-            case fancy::user_input::CONTROL:
-                switch (ui.control) {
+            case fancy::CTRL_CHAR:
+                switch (ui.chr) {
+                    case 'D':
+                        goto quitting;
+                    case 'M':
+                        exc.next();
+                        continue;
+                    default:
+                        std::cout << "Unexpected command Ctrl-" << ui.chr << std::endl;
+                        goto again;
+                }
+            case fancy::CHAR:
+                switch (ui.chr) {
                     case 's':
-                    case '\n':
                     case 'n':
                     case 'f':
                         exc.next();
                         continue;
+                    case 'h':
                     case '?':
-                        std::cout << R"(Help
-Ctrl-D: Quit and save
-Ctrl-C: Interrupt
-r: Restart everything
-c: Start/Continue execution
-Enter: Step-in
-s: Step-in
-n: Step-over
-f: Step-out
-)" << std::flush;
+                        show_help();
                         goto again;
                     default:
-                        std::cout << "Unexpected command " << ui.control << std::endl;
+                        std::cout << "Unexpected command " << ui.chr << std::endl;
                         goto again;
                 }
-            case fancy::user_input::CTRL_D:
+            case fancy::ESCAPE:
+                switch (ui.escape) {
+                    case fancy::escape_t::LEFT:
+                        std::cout << "<-" << std::endl;
+                        goto again;
+                    case fancy::escape_t::RIGHT:
+                        std::cout << "->" << std::endl;
+                        goto again;
+                    case fancy::escape_t::UP:
+                        std::cout << "^^" << std::endl;
+                        goto again;
+                    case fancy::escape_t::DOWN:
+                        std::cout << "vv" << std::endl;
+                        goto again;
+                    case fancy::escape_t::F1:
+                        show_help();
+                        goto again;
+                    default:
+                        std::cout << "Unexpected escape command " << (int)ui.escape << std::endl;
+                        goto again;
+                }
+            case fancy::EOT:
                 goto quitting;
         }
     }

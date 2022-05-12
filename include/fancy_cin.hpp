@@ -5,18 +5,50 @@ namespace fancy {
     void init();
     void quit();
 
+    enum kind_t {
+        SIGNAL,
+        CHAR,
+        CTRL_CHAR,
+        EOT,
+        ESCAPE,
+        STRING,
+        DOUBLE,
+        INVALID, // string contains raw user input
+    };
+    enum class escape_t {
+        NONE,
+        INVALID,
+        ESC,
+        UP,
+        DOWN,
+        RIGHT,
+        LEFT,
+        INS,
+        DEL,
+        HOME,
+        END,
+        PAGE_UP,
+        PAGE_DOWN,
+        F1,
+        F2,
+        F3,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        F11,
+        F12,
+    };
+
     struct user_input {
-        enum {
-            SIGNAL,
-            CONTROL,
-            CTRL_D,
-            STRING,
-            DOUBLE,
-            INVALID, // string contains raw user input
-        } kind;
+        kind_t kind;
         union {
             int signal;
-            char control;
+            char chr;
+            escape_t escape;
             // Note: statically allocated, do NOT free()
             const char *string;
             double value;
