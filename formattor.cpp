@@ -25,6 +25,12 @@ static void engineer_fmt(double v0) {
 
 void formattor::show() {
     std::cout << "\e[1,1H\e[2J\e[1m[[[ " << profile->name << " ]]]\e[0m\n";
+#ifndef NDEBUG
+    std::cout << " curr = [ ";
+    for (auto c : profile->current)
+        std::cout << c << ", ";
+    std::cout << "];\n";
+#endif
     depth = 0;
     for (auto i = 0zu; auto &st : profile->steps) {
         std::cout << get_prefix(*st) << "[" << i++ << "] ";

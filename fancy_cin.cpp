@@ -90,22 +90,17 @@ namespace fancy {
         make_raw();
         user_input ui;
 again:
+        auto len = read(STDIN_FILENO, &ui.chr, 1);
+        if (auto v = g_int) {
+            ui.kind = SIGNAL;
+            ui.signal = v;
+            g_int = 0;
+            return ui;
+        }
         switch (read(STDIN_FILENO, &ui.chr, 1)) {
             case 0:
-                if (auto v = g_int) {
-                    ui.kind = SIGNAL;
-                    ui.signal = v;
-                    g_int = 0;
-                    return ui;
-                }
                 goto again;
             case -1:
-                if (auto v = g_int) {
-                    ui.kind = SIGNAL;
-                    ui.signal = v;
-                    g_int = 0;
-                    return ui;
-                }
                 switch (errno) {
                     case EAGAIN:
                     case EINTR:
@@ -124,23 +119,19 @@ again:
                     return ui;
                 }
                 ui.kind = ESCAPE;
-                switch (char buf[5]; auto len = read(STDIN_FILENO, &buf, 4)) {
+                char buf[5];
+                auto len = read(STDIN_FILENO, &buf, 4);
+                if (auto v = g_int) {
+                    ui.kind = SIGNAL;
+                    ui.signal = v;
+                    g_int = 0;
+                    return ui;
+                }
+                switch (len) {
                     case 0:
-                        if (auto v = g_int) {
-                            ui.kind = SIGNAL;
-                            ui.signal = v;
-                            g_int = 0;
-                            return ui;
-                        }
                         ui.escape = escape_t::ESC;
                         return ui;
                     case -1:
-                        if (auto v = g_int) {
-                            ui.kind = SIGNAL;
-                            ui.signal = v;
-                            g_int = 0;
-                            return ui;
-                        }
                         switch (errno) {
                             case EAGAIN:
                             case EINTR:
@@ -189,27 +180,22 @@ again:
     user_input request_string() {
         make_canon();
         user_input ui;
+        static char buf[4096];
 again:
-        switch (static char buf[4096]; auto len = read(STDIN_FILENO, buf, 4096)) {
+        auto len = read(STDIN_FILENO, buf, 4096);
+        if (auto v = g_int) {
+            ui.kind = SIGNAL;
+            ui.signal = v;
+            g_int = 0;
+            make_raw();
+            return ui;
+        }
+        switch (len) {
             case 0:
-                if (auto v = g_int) {
-                    ui.kind = SIGNAL;
-                    ui.signal = v;
-                    g_int = 0;
-                    make_raw();
-                    return ui;
-                }
                 ui.kind = EOT;
                 make_raw();
                 return ui;
             case -1:
-                if (auto v = g_int) {
-                    ui.kind = SIGNAL;
-                    ui.signal = v;
-                    g_int = 0;
-                    make_raw();
-                    return ui;
-                }
                 switch (errno) {
                     case EAGAIN:
                     case EINTR:

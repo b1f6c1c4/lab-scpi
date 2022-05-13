@@ -6,11 +6,99 @@
 
 #include "fancy_cin.hpp"
 
-// return false: is finished
-// return true: more next() required
-bool executor::next() {
+#define ALL std::numeric_limits<size_t>::max()
+
+void executor::start() {
+    _limit = 0;
+}
+
+void executor::step_in() {
+    _limit = ALL;
+}
+
+void executor::step_over() {
+    _limit = _profile->current.size() + 1;
+}
+
+void executor::step_out() {
+    _limit = _profile->current.size();
+}
+
+void executor::reset() {
+    revt(_profile->steps, ALL);
+}
+
+void executor::reverse_step_in() {
+    auto &c = _profile->current;
+    if (c.empty()) return;
+    if (!c.back()) {
+        c.pop_back();
+        if (c.empty()) return;
+        revt_one(step::get(_profile->steps, c));
+        return;
+    }
+    revt_one(step::get(_profile->steps, c));
+    c.back()--;
+}
+
+void executor::reverse_step_over() {
+    auto &c = _profile->current;
+    if (c.empty()) return;
+    if (c.back()) {
+        revt_one(step::get(_profile->steps, c));
+        c.back()--;
+        step::get(_profile->steps, c)->status = step::step::CURRENT;
+        return;
+    }
+    c.pop_back();
+    if (c.empty()) return;
+    revt_one(step::get(_profile->steps, c));
+}
+
+void executor::reverse_step_out() {
+    auto &c = _profile->current;
+    if (c.empty()) return;
+    auto v = c.back();
+    c.pop_back();
+    revt(dynamic_cast<step::step_group *>(step::get(_profile->steps, c))->steps, v);
+}
+
+// return false: no more run needed
+// return true: more run needed
+bool executor::run() {
     _depth = 0;
-    return exec(_profile->steps);
+    if (!_profile->current.empty() && _profile->current.front() == _profile->steps.size())
+        return false;
+    exec(_profile->steps);
+    return _profile->current.size() >= _limit;
+}
+
+bool executor::revt_one(step::step *st) {
+    if (auto grp = dynamic_cast<step::step_group *>(st);
+            grp && revt(grp->steps, ALL)) {
+        st->status = step::step::REVERTED;
+        return true;
+    } else {
+        st->status = step::step::QUEUED;
+        return false;
+    }
+}
+
+// return false: shall mark as queued
+// return true: shall mark as reverted
+bool executor::revt(step::steps_t &steps, size_t ub) {
+    auto has_concrete = false;
+    for (auto i = 0zu; auto &st : steps)
+        if (i++ == ub) {
+            has_concrete |= revt_one(st.get());
+            break;
+        } else {
+            st->status = step::step::REVERTED;
+            has_concrete = true;
+            if (auto grp = dynamic_cast<step::step_group *>(st.get()))
+                revt(grp->steps, ALL);
+        }
+    return has_concrete;
 }
 
 // return false: shall increment counter

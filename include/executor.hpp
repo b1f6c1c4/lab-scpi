@@ -11,27 +11,26 @@ public:
 private:
     size_t _depth;
     step::steps_t *_ns;
-
-    enum {
-        IDLE,
-        STEP_OVER,
-        STEP_OUT,
-        RUNNING,
-    } _state;
-    size_t _limit;
+    size_t _limit; // idle when curr depth < _limit
 
 public:
-    void reset();
+
+    // shall be followed by  while (run());
     void start();
     void step_in();
     void step_over();
     void step_out();
+
+    void reset();
     void reverse_step_in();
     void reverse_step_over();
     void reverse_step_out();
 
+    bool run();
+
 private:
-    bool next();
+    bool revt_one(step::step *st);
+    bool revt(step::steps_t &steps, size_t ub);
     bool exec(step::steps_t &steps);
 
 public:

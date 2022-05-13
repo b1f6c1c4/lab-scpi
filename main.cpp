@@ -53,15 +53,15 @@ int main(int argc, char *argv[]) {
     exc._profile = &profile;
 
     fancy::init();
+
     while (true) {
         fmt.show();
         std::cout << "NORMAL mode, command requested" << std::endl;
-again:
-        auto ui = fancy::event_loop();
-        switch (ui.kind) {
+input_again:
+        switch (auto ui = fancy::event_loop(); ui.kind) {
             case fancy::SIGNAL:
                 std::cout << "To quit, press  Ctrl-D" << std::endl;
-                goto again;
+                goto input_again;
             case fancy::CTRL_CHAR:
                 switch (ui.chr) {
                     case 'D':
@@ -70,14 +70,15 @@ again:
                         return 0;
                     case 'M': // Enter
                         exc.start();
-                        continue;
+                        break;
                     case 'H': // Backscape
                         exc.reverse_step_in();
                         continue;
                     default:
                         std::cout << "Unexpected command Ctrl-" << ui.chr << std::endl;
-                        goto again;
+                        goto input_again;
                 }
+                break;
             case fancy::CHAR:
                 switch (ui.chr) {
                     case 'r':
@@ -85,24 +86,25 @@ again:
                         continue;
                     case 'c':
                         exc.start();
-                        continue;
+                        break;
                     case 's':
                         exc.step_in();
-                        continue;
+                        break;
                     case 'n':
                         exc.step_over();
-                        continue;
+                        break;
                     case 'f':
                         exc.step_out();
-                        continue;
+                        break;
                     case 'h':
                     case '?':
                         show_help();
-                        goto again;
+                        goto input_again;
                     default:
                         std::cout << "Unexpected command " << ui.chr << std::endl;
-                        goto again;
+                        goto input_again;
                 }
+                break;
             case fancy::ESCAPE:
                 switch (ui.escape) {
                     case fancy::escape_t::LEFT:
@@ -110,28 +112,35 @@ again:
                         continue;
                     case fancy::escape_t::RIGHT:
                         exc.step_in();
-                        continue;
+                        break;
                     case fancy::escape_t::UP:
                         exc.reverse_step_over();
                         continue;
                     case fancy::escape_t::DOWN:
                         exc.step_over();
-                        continue;
+                        break;
                     case fancy::escape_t::HOME:
                         exc.reset();
                         continue;
                     case fancy::escape_t::END:
                         exc.step_out();
-                        continue;
+                        break;
                     case fancy::escape_t::F1:
                         show_help();
-                        goto again;
+                        goto input_again;
                     default:
                         std::cout << "Unexpected escape command " << (int)ui.escape << std::endl;
-                        goto again;
+                        goto input_again;
                 }
+                break;
             case fancy::EOT:
                 goto quitting;
+            default:
+                std::cout << "Unexpected kind " << (int)ui.kind << std::endl;
+                goto input_again;
+        }
+        while (exc.run()) {
+            fmt.show();
         }
     }
 quitting:
