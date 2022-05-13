@@ -23,19 +23,20 @@ static void engineer_fmt(double v0) {
     std::cout << std::setprecision(6) << std::defaultfloat;
 }
 
+formattor::formattor(profile_t *profile)
+    : _profile{ profile } { }
+
 void formattor::show() {
-#ifdef NDEBUG
     std::cout << "\e[1,1H\e[2J";
-#endif
-    std::cout << "\e[1m[[[ " << profile->name << " ]]]\e[0m\n";
+    std::cout << "\e[1m[[[ " << _profile->name << " ]]]\e[0m\n";
 #ifndef NDEBUG
     std::cout << " curr = [ ";
-    for (auto c : profile->current)
+    for (auto c : _profile->current)
         std::cout << c << ", ";
     std::cout << "];\n";
 #endif
-    depth = 0;
-    for (auto i = 0zu; auto &st : profile->steps) {
+    _depth = 0;
+    for (auto i = 0zu; auto &st : _profile->steps) {
         std::cout << get_prefix(*st) << "[" << i++ << "] ";
         try {
             st->accept(*this);
@@ -88,12 +89,12 @@ bad:
             return 0;
     }
     std::cout << "\e[0\nm";
-    depth++;
+    _depth++;
     for (auto i = 0zu; auto &st : step.steps) {
         if (i)
             std::cout << (step.vertical ? '\n' : '\t');
         if (step.vertical)
-            for (auto j = 0zu; j < depth; j++)
+            for (auto j = 0zu; j < _depth; j++)
                 std::cout << "    ";
         std::cout << get_prefix(*st) << "[" << i++ << "] ";
         try {
@@ -102,7 +103,7 @@ bad:
             std::cout << e.what();
         }
     }
-    depth--;
+    _depth--;
     return 0;
 }
 

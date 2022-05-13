@@ -8,6 +8,9 @@
 
 #define ALL std::numeric_limits<size_t>::max()
 
+executor::executor(chnl_map *chnls, profile_t *profile)
+    : _chnls{ chnls }, _profile{ profile } { }
+
 void executor::start() {
     _limit = 0;
 }
@@ -26,6 +29,7 @@ void executor::step_out() {
 
 void executor::reset() {
     revt(_profile->steps, ALL);
+    _profile->current.clear();
 }
 
 void executor::reverse_step_in() {
@@ -141,18 +145,23 @@ int executor::visit(step::step_group &step) {
 }
 
 int executor::visit(step::confirm &step) {
-    std::cout << step.prompt << "\n> " << std::flush;
+    std::cout << step.prompt << std::endl;
     auto ui = fancy::request_string();
     return ui.kind == fancy::STRING ? 0 : -1;
 }
 
 int executor::visit(step::user_input &step) {
-    std::cout << step.prompt << "\n> " << std::flush;
+    std::cout << step.prompt << std::endl;
     auto ui = fancy::request_double();
-    if (ui.kind != fancy::DOUBLE)
-        return 1; // not really interrupted
-    step.value = ui.value;
-    return 0;
+    switch (ui.kind) {
+        case fancy::DOUBLE:
+            step.value = ui.value;
+            return 0;
+        case fancy::INVALID:
+            return 1;
+        default:
+            return -1;
+    }
 }
 
 int executor::visit(step::delay &step) {

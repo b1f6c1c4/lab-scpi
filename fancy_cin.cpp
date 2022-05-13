@@ -5,11 +5,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <string>
+#include <cttrie/cttrie.h>
+#include <iostream>
 #include <stdexcept>
+#include <string>
 #include <termios.h>
 #include <unistd.h>
-#include <cttrie/cttrie.h>
 
 using namespace std::string_literals;
 
@@ -20,7 +21,7 @@ static termios g_original{};
 static termios g_raw_mode;
 
 static void sig_handler(int sig) {
-    if (g_int)
+    if (g_int || sig == SIGQUIT || sig == SIGTERM)
         std::quick_exit(128 + sig);
     g_int = sig;
 }
@@ -32,14 +33,16 @@ namespace fancy {
         if (!isatty(STDIN_FILENO)) return;
         if (tcgetattr(STDIN_FILENO, &g_original) < 0) return;
 
-#ifndef NDEBUG
-        std::printf("About to enter RAW mode, I'm pid=%d\n", getpid());
-#endif
         g_int = 0;
 
-        std::signal(SIGINT, &sig_handler);
-        std::signal(SIGTERM, &sig_handler);
-        std::signal(SIGQUIT, &sig_handler);
+        struct sigaction act;
+        act.sa_handler = &sig_handler;
+        sigemptyset(&act.sa_mask);
+        act.sa_flags = 0;
+        if (sigaction(SIGINT, &act, nullptr) ||
+                sigaction(SIGQUIT, &act, nullptr)) {
+            throw std::runtime_error{ "Cannot install sigaction: "s + std::strerror(errno) };
+        }
 
         g_raw_mode = g_original;
         g_raw_mode.c_iflag &= ~(ICRNL | ISTRIP | IXON);
@@ -55,11 +58,7 @@ namespace fancy {
 
     void quit() {
         if (g_is_enabled) {
-#ifndef NDEBUG
-            std::printf("About to exit RAW mode, I'm pid=%d\n", getpid());
-#endif
             std::signal(SIGINT, SIG_DFL);
-            std::signal(SIGTERM, SIG_DFL);
             std::signal(SIGQUIT, SIG_DFL);
             tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_original);
             g_is_enabled = false;
@@ -84,6 +83,18 @@ namespace fancy {
         g_raw_mode.c_lflag &= ~(ECHO | ICANON | IEXTEN);
         if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_raw_mode) < 0) return;
         g_is_raw = true;
+    }
+
+    user_input check_sig() {
+        user_input ui;
+        if (auto v = g_int) {
+            ui.kind = SIGNAL;
+            ui.signal = v;
+            g_int = 0;
+            return ui;
+        }
+        ui.kind = NONE;
+        return ui;
     }
 
     user_input event_loop() {
@@ -177,7 +188,7 @@ again:
         }
     }
 
-    user_input request_string() {
+    static user_input request_line() {
         make_canon();
         user_input ui;
         static char buf[4096];
@@ -213,9 +224,15 @@ again:
         }
     }
 
+    user_input request_string() {
+        std::cout << "(INSERT mode, string) > " << std::flush;
+        return request_line();
+    }
+
     user_input request_double() {
-        auto ui = request_string();
-        if (!ui.kind == STRING)
+        std::cout << "(INSERT mode, number) > " << std::flush;
+        auto ui = request_line();
+        if (ui.kind != STRING)
             return ui;
         char *end;
         if (auto val = std::strtof(ui.string, &end); *end) {

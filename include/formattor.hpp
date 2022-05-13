@@ -2,16 +2,16 @@
 
 #include "profile.hpp"
 
-struct formattor : step_visitor {
-    profile_t *profile;
-
-    void show();
-
-private:
-    size_t depth;
+class formattor : public step_visitor {
+    profile_t *_profile;
+    size_t _depth;
     static const char *get_prefix(step::step &step);
 
 public:
+
+    explicit formattor(profile_t *profile);
+    void show();
+
     int visit(step::step_group &step);
     int visit(step::confirm &step);
     int visit(step::user_input &step);

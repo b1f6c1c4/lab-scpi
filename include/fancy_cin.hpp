@@ -55,6 +55,7 @@ namespace fancy {
             double value;
         };
     };
+    user_input check_sig();
     user_input event_loop();
     user_input request_string();
     user_input request_double();
