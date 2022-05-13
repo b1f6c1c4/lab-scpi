@@ -151,9 +151,9 @@ namespace nlohmann {
         static void from_json(const json &j, std::unique_ptr<step::step> &step) {
             step->status = j["status"];
             if (auto st = dynamic_cast<step::valued_step *>(step.get()); st)
-                st->value = j["value"];
+                j["value"].get_to(st->value);
             else if (auto st = dynamic_cast<step::recv_str *>(step.get()); st)
-                st->value = j["string"];
+                j["string"].get_to(st->value);
             else if (auto st = dynamic_cast<step::step_group *>(step.get()); st)
                 j["steps"].get_to(st->steps);
         }
@@ -188,7 +188,7 @@ namespace nlohmann {
 std::istream &operator>>(std::istream &is, profile_t &profile) {
     nlohmann::json j{};
     is >> j;
-    profile.name = j["name"];
+    j["name"].get_to(profile.name);
     j["steps"].get_to(profile.steps);
     j["current"].get_to(profile.current);
     return is;
