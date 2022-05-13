@@ -24,7 +24,10 @@ static void engineer_fmt(double v0) {
 }
 
 void formattor::show() {
-    std::cout << "\e[1,1H\e[2J\e[1m[[[ " << profile->name << " ]]]\e[0m\n";
+#ifdef NDEBUG
+    std::cout << "\e[1,1H\e[2J";
+#endif
+    std::cout << "\e[1m[[[ " << profile->name << " ]]]\e[0m\n";
 #ifndef NDEBUG
     std::cout << " curr = [ ";
     for (auto c : profile->current)
@@ -58,7 +61,7 @@ const char *formattor::get_prefix(step::step &step) {
     return "?";
 }
 
-void *formattor::visit(step::step_group &step) {
+int formattor::visit(step::step_group &step) {
     std::cout << step.name;
     switch (step.status) {
         case step::step::CURRENT:
@@ -82,7 +85,7 @@ void *formattor::visit(step::step_group &step) {
         case step::step::QUEUED:
 bad:
             std::cout << "\e[0m";
-            return nullptr;
+            return 0;
     }
     std::cout << "\e[0\nm";
     depth++;
@@ -100,10 +103,10 @@ bad:
         }
     }
     depth--;
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::confirm &step) {
+int formattor::visit(step::confirm &step) {
     std::cout << step.name << " ";
     switch (step.status) {
         case step::step::QUEUED:
@@ -118,10 +121,10 @@ void *formattor::visit(step::confirm &step) {
             break;
     }
     std::cout << "\e[0m";
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::user_input &step) {
+int formattor::visit(step::user_input &step) {
     std::cout << step.name << " ";
     switch (step.status) {
         case step::step::QUEUED:
@@ -137,23 +140,23 @@ void *formattor::visit(step::user_input &step) {
             break;
     }
     std::cout << step.unit << "\e[0m";
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::delay &step) {
+int formattor::visit(step::delay &step) {
     std::cout << step.name << " (" << step.seconds << "s delay)\e[0m";
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::send &step) {
+int formattor::visit(step::send &step) {
     std::cout << step.name << " ->" << step.channel;
     if (step.status == step::step::CURRENT)
         std::cout << " " << step.cmd;
     std::cout << "\e[0m";
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::recv &step) {
+int formattor::visit(step::recv &step) {
     std::cout << step.name << " " << step.channel << "->";
     switch (step.status) {
         case step::step::QUEUED:
@@ -169,10 +172,10 @@ void *formattor::visit(step::recv &step) {
             break;
     }
     std::cout << step.unit << "\e[0m";
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::recv_str &step) {
+int formattor::visit(step::recv_str &step) {
     std::cout << step.name << " " << step.channel << "->";
     switch (step.status) {
         case step::step::QUEUED:
@@ -188,10 +191,10 @@ void *formattor::visit(step::recv_str &step) {
             break;
     }
     std::cout << "\e[0m";
-    return nullptr;
+    return 0;
 }
 
-void *formattor::visit(step::math &step) {
+int formattor::visit(step::math &step) {
     std::cout << step.name << " ";
     switch (step.status) {
         case step::step::QUEUED:
@@ -206,5 +209,5 @@ void *formattor::visit(step::math &step) {
             break;
     }
     std::cout << step.unit << "\e[0m";
-    return nullptr;
+    return 0;
 }

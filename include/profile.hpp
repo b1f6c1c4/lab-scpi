@@ -20,14 +20,14 @@ namespace step {
 }
 
 struct step_visitor {
-    virtual void *visit(step::step_group &step) = 0;
-    virtual void *visit(step::confirm &step) = 0;
-    virtual void *visit(step::user_input &step) = 0;
-    virtual void *visit(step::delay &step) = 0;
-    virtual void *visit(step::send &step) = 0;
-    virtual void *visit(step::recv &step) = 0;
-    virtual void *visit(step::recv_str &step) = 0;
-    virtual void *visit(step::math &step) = 0;
+    virtual int visit(step::step_group &step) = 0;
+    virtual int visit(step::confirm &step) = 0;
+    virtual int visit(step::user_input &step) = 0;
+    virtual int visit(step::delay &step) = 0;
+    virtual int visit(step::send &step) = 0;
+    virtual int visit(step::recv &step) = 0;
+    virtual int visit(step::recv_str &step) = 0;
+    virtual int visit(step::math &step) = 0;
 };
 
 namespace step {
@@ -43,7 +43,7 @@ namespace step {
             REVERTED,
         } status;
 
-        virtual void *accept(step_visitor &sv) = 0;
+        virtual int accept(step_visitor &sv) = 0;
     };
 
     struct valued_step : step {
@@ -56,45 +56,45 @@ namespace step {
         std::vector<size_t> digest;
         bool vertical;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct confirm : step {
         std::string prompt;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct user_input : valued_step {
         std::string prompt;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct delay : step {
         int seconds;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct send : step {
         std::string channel;
         std::string cmd;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct recv : valued_step {
         std::string channel;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct recv_str : step {
         std::string channel;
         std::string value;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     struct math : valued_step {
@@ -116,7 +116,7 @@ namespace step {
         } op;
         std::vector<operand> operands;
 
-        void *accept(step_visitor &sv) override { return sv.visit(*this); }
+        int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
     template <typename TContainer>

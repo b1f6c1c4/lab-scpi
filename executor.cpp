@@ -66,10 +66,11 @@ void executor::reverse_step_out() {
 // return false: no more run needed
 // return true: more run needed
 bool executor::run() {
-    _depth = 0;
     if (!_profile->current.empty() && _profile->current.front() == _profile->steps.size())
         return false;
-    exec(_profile->steps);
+    _depth = 0;
+    if (exec(_profile->steps) == -1)
+        return false;
     return _profile->current.size() >= _limit;
 }
 
@@ -101,9 +102,10 @@ bool executor::revt(step::steps_t &steps, size_t ub) {
     return has_concrete;
 }
 
-// return false: shall increment counter
-// return true: shall not increment counter
-bool executor::exec(step::steps_t &steps) {
+// return -1: interrupted, shall not incr counter
+// return 0: shall increment counter
+// return 1: shall not increment counter
+int executor::exec(step::steps_t &steps) {
     auto is_new = _depth == _profile->current.size();
     if (is_new)
         _profile->current.push_back(0);
@@ -111,68 +113,68 @@ bool executor::exec(step::steps_t &steps) {
     auto &pcd = _profile->current[_depth];
     if (pcd == steps.size()) {
         _profile->current.pop_back();
-        return false;
+        return 0;
     }
     steps[pcd]->status = step::step::CURRENT;
     if (is_new && !dynamic_cast<step::step_group *>(steps[pcd].get()))
-        return true;
+        return 1;
     _ns = &steps;
-    if (!steps[pcd]->accept(*this)) {
-        steps[pcd]->status = step::step::FINISHED;
-        pcd++;
+    if (auto ans = steps[pcd]->accept(*this)) {
+        return ans;
     }
+    steps[pcd]->status = step::step::FINISHED;
+    pcd++;
     if (pcd < steps.size()) {
         steps[pcd]->status = step::step::CURRENT;
-        return true;
+        return 1;
     }
     assert(_depth == _profile->current.size() - 1);
     _profile->current.pop_back();
-    return false;
+    return 0;
 }
 
-void *executor::visit(step::step_group &step) {
+int executor::visit(step::step_group &step) {
     _depth++;
     auto ans = exec(step.steps);
     _depth--;
-    return ans ? this : nullptr;
+    return ans;
 }
 
-void *executor::visit(step::confirm &step) {
+int executor::visit(step::confirm &step) {
     std::cout << step.prompt << "\n> " << std::flush;
     auto ui = fancy::request_string();
-    return ui.kind == fancy::STRING ? nullptr : this;
+    return ui.kind == fancy::STRING ? 0 : -1;
 }
 
-void *executor::visit(step::user_input &step) {
+int executor::visit(step::user_input &step) {
     std::cout << step.prompt << "\n> " << std::flush;
     auto ui = fancy::request_double();
     if (ui.kind != fancy::DOUBLE)
-        return this;
+        return 1; // not really interrupted
     step.value = ui.value;
-    return nullptr;
+    return 0;
 }
 
-void *executor::visit(step::delay &step) {
-    sleep(step.seconds);
-    return nullptr;
+int executor::visit(step::delay &step) {
+    return sleep(step.seconds) ? -1 : 0;
 }
 
-void *executor::visit(step::send &step) {
+int executor::visit(step::send &step) {
     _chnls->at(step.channel)->send(step.cmd);
-    return nullptr;
+    return 0;
 }
 
-void *executor::visit(step::recv &step) {
+int executor::visit(step::recv &step) {
     step.value = _chnls->at(step.channel)->recv_number();
-    return nullptr;
+    return 0;
 }
 
-void *executor::visit(step::recv_str &step) {
+int executor::visit(step::recv_str &step) {
     step.value = _chnls->at(step.channel)->recv();
-    return nullptr;
+    return 0;
 }
 
-void *executor::visit(step::math &step) {
+int executor::visit(step::math &step) {
     auto value = std::numeric_limits<double>::quiet_NaN();
     switch (step.op) {
         case step::math::ADD:
@@ -203,5 +205,5 @@ void *executor::visit(step::math &step) {
             break;
     }
     step.value = value;
-    return nullptr;
+    return 0;
 }

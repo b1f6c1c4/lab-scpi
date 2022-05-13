@@ -31,15 +31,15 @@ public:
 private:
     bool revt_one(step::step *st);
     bool revt(step::steps_t &steps, size_t ub);
-    bool exec(step::steps_t &steps);
+    int exec(step::steps_t &steps);
 
 public:
-    void *visit(step::step_group &step);
-    void *visit(step::confirm &step);
-    void *visit(step::user_input &step);
-    void *visit(step::delay &step);
-    void *visit(step::send &step);
-    void *visit(step::recv &step);
-    void *visit(step::recv_str &step);
-    void *visit(step::math &step);
+    int visit(step::step_group &step);
+    int visit(step::confirm &step);
+    int visit(step::user_input &step);
+    int visit(step::delay &step);
+    int visit(step::send &step);
+    int visit(step::recv &step);
+    int visit(step::recv_str &step);
+    int visit(step::math &step);
 };

@@ -97,7 +97,7 @@ again:
             g_int = 0;
             return ui;
         }
-        switch (read(STDIN_FILENO, &ui.chr, 1)) {
+        switch (len) {
             case 0:
                 goto again;
             case -1:
@@ -120,7 +120,7 @@ again:
                 }
                 ui.kind = ESCAPE;
                 char buf[5];
-                auto len = read(STDIN_FILENO, &buf, 4);
+                len = read(STDIN_FILENO, &buf, 4);
                 if (auto v = g_int) {
                     ui.kind = SIGNAL;
                     ui.signal = v;

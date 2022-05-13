@@ -21,18 +21,18 @@ fake_scpi::fake_scpi(std::string name) : _name{ std::move(name) } {
 
 void fake_scpi::send(std::string s) {
     std::cout << "(fake-scpi " << _name << " sending " << s << ")\n";
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
 }
 
 std::string fake_scpi::recv() {
     std::cout << "(fake-scpi " << _name << " receiving)\n";
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return _name;
 }
 
 double fake_scpi::recv_number() {
     std::cout << "(fake-scpi " << _name << " receiving number)\n";
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return 0;
 }
 
