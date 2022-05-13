@@ -28,43 +28,71 @@ void executor::step_out() {
 }
 
 void executor::reset() {
-    revt(_profile->steps, ALL);
     _profile->current.clear();
+    _depth = 0;
+    revt(_profile->steps);
 }
 
 void executor::reverse_step_in() {
-    auto &c = _profile->current;
-    if (c.empty()) return;
-    if (!c.back()) {
-        c.pop_back();
-        if (c.empty()) return;
-        revt_one(step::get(_profile->steps, c));
+    if (_profile->current.empty())
         return;
-    }
-    revt_one(step::get(_profile->steps, c));
-    c.back()--;
+    if (_profile->current.back()-- == 0)
+        _profile->current.pop_back();
+    else if (auto grp = dynamic_cast<step::step_group *>(step::get(_profile->steps, _profile->current)))
+        _profile->current.push_back(grp->steps.size());
+    _depth = 0;
+    revt(_profile->steps);
 }
 
 void executor::reverse_step_over() {
-    auto &c = _profile->current;
-    if (c.empty()) return;
-    if (c.back()) {
-        revt_one(step::get(_profile->steps, c));
-        c.back()--;
-        step::get(_profile->steps, c)->status = step::step::CURRENT;
+    if (_profile->current.empty())
         return;
-    }
-    c.pop_back();
-    if (c.empty()) return;
-    revt_one(step::get(_profile->steps, c));
+    if (_profile->current.back()-- == 0)
+        _profile->current.pop_back();
+    _depth = 0;
+    revt(_profile->steps);
 }
 
 void executor::reverse_step_out() {
-    auto &c = _profile->current;
-    if (c.empty()) return;
-    auto v = c.back();
-    c.pop_back();
-    revt(dynamic_cast<step::step_group *>(step::get(_profile->steps, c))->steps, v);
+    if (_profile->current.empty())
+        return;
+    _profile->current.pop_back();
+    _depth = 0;
+    revt(_profile->steps);
+}
+
+// return false: has concrete step reverted
+// return true: has no concrete step reverted
+bool executor::revt(step::steps_t &steps) {
+    auto has_concrete = false;
+    auto first = 0zu;
+    auto has_special = _depth < _profile->current.size();
+    if (has_special) {
+        first = _profile->current[_depth];
+        if (first < steps.size())
+            steps[first]->status = step::step::CURRENT;
+    }
+    for (auto i = first; i < steps.size(); i++) {
+        switch (steps[i]->status) {
+            case step::step::FINISHED:
+                steps[i]->status = step::step::REVERTED;
+            case step::step::REVERTED:
+                has_concrete = true;
+                break;
+            case step::step::CURRENT:
+                auto child = false;
+                if (auto grp = dynamic_cast<step::step_group *>(steps[i].get())) {
+                    _depth++;
+                    child = revt(grp->steps);
+                    _depth--;
+                }
+                steps[i]->status = child ? step::step::REVERTED : step::step::QUEUED;
+                break;
+        }
+        if (has_special && i == first)
+            steps[i]->status = step::step::CURRENT;
+    }
+    return has_concrete;
 }
 
 // return false: no more run needed
@@ -76,34 +104,6 @@ bool executor::run() {
     if (exec(_profile->steps) == -1)
         return false;
     return _profile->current.size() >= _limit;
-}
-
-bool executor::revt_one(step::step *st) {
-    if (auto grp = dynamic_cast<step::step_group *>(st);
-            grp && revt(grp->steps, ALL)) {
-        st->status = step::step::REVERTED;
-        return true;
-    } else {
-        st->status = step::step::QUEUED;
-        return false;
-    }
-}
-
-// return false: shall mark as queued
-// return true: shall mark as reverted
-bool executor::revt(step::steps_t &steps, size_t ub) {
-    auto has_concrete = false;
-    for (auto i = 0zu; auto &st : steps)
-        if (i++ == ub) {
-            has_concrete |= revt_one(st.get());
-            break;
-        } else {
-            st->status = step::step::REVERTED;
-            has_concrete = true;
-            if (auto grp = dynamic_cast<step::step_group *>(st.get()))
-                revt(grp->steps, ALL);
-        }
-    return has_concrete;
 }
 
 // return -1: interrupted, shall not incr counter

@@ -28,8 +28,7 @@ public:
     bool run();
 
 private:
-    bool revt_one(step::step *st);
-    bool revt(step::steps_t &steps, size_t ub);
+    bool revt(step::steps_t &steps);
     int exec(step::steps_t &steps);
 
 public:

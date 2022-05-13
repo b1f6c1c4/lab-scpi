@@ -162,7 +162,6 @@ int main(int argc, char *argv[]) {
                     }
                     fmt.show();
                 }
-                break;
             case normal::REFRESH:
                 fmt.show();
                 break;
