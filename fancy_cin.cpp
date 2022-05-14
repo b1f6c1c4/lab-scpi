@@ -71,6 +71,7 @@ namespace fancy {
         if (!g_is_raw) return;
         g_raw_mode.c_iflag |= (ICRNL);
         g_raw_mode.c_lflag |= (ECHO | ICANON | IEXTEN);
+        g_raw_mode.c_cc[VEOF] = VINTR;
         if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_raw_mode) < 0) return;
         g_is_raw = false;
     }
@@ -81,6 +82,7 @@ namespace fancy {
         if (g_is_raw) return;
         g_raw_mode.c_iflag &= ~(ICRNL);
         g_raw_mode.c_lflag &= ~(ECHO | ICANON | IEXTEN);
+        g_raw_mode.c_cc[VEOF] = VEOF;
         if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_raw_mode) < 0) return;
         g_is_raw = true;
     }

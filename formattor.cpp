@@ -88,7 +88,7 @@ bad:
             std::cout << "\e[0m";
             return 0;
     }
-    std::cout << "\e[0\nm";
+    std::cout << "\e[0m\n";
     _depth++;
     for (auto i = 0zu; auto &st : step.steps) {
         if (i)

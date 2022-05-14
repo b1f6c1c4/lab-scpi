@@ -8,6 +8,7 @@
 
 void show_help() {
     std::cout << R"(==== Help ====
+NORMAL mode:
 Ctrl-D: Quit and save
 Ctrl-Q: Quit and discard
 Ctrl-\: Quit immediately
@@ -20,6 +21,13 @@ f/End: Step-out
 Backscape: Reverse step-in
 Up: Reverse step-over
 Left: Reverse step-out
+Space: Refresh display
+
+INSERT mode:
+Ctrl-D: Abort this step
+Ctrl-C: Abort this step
+Enter: Save and proceed
+Ctrl-Q: Quit program immediately
 )" << std::flush;
 }
 
@@ -70,6 +78,8 @@ input_again:
                 case 'f':
                     exc.step_out();
                     return normal::RUN;
+                case ' ':
+                    return normal::REFRESH;
                 case 'h':
                 case '?':
                     show_help();

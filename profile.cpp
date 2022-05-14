@@ -20,8 +20,6 @@ static void parse_path(const ryml::NodeRef &n, std::vector<size_t> &path) {
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
-    if (!n.has_val_tag())
-        std::cerr << n;
     auto &&o = n.val_tag();
 #define T(ty) \
     do { \
