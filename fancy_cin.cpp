@@ -237,7 +237,7 @@ again:
         if (ui.kind != STRING)
             return ui;
         char *end;
-        if (auto val = std::strtof(ui.string, &end); *end) {
+        if (auto val = std::strtof(ui.string, &end); *end != '\n' && *end != '\0') {
             ui.kind = INVALID;
         } else {
             ui.kind = DOUBLE;

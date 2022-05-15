@@ -63,6 +63,8 @@ again:
             throw std::runtime_error{ "read: "s + std::strerror(errno) };
         default:
             auto prev = str.size();
+            if (buf[len - 1] == '\n')
+                len--;
             str.resize(len);
             memcpy(str.data() + prev, buf, len);
             if (buf[len - 1] != '\n')
