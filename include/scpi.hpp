@@ -8,7 +8,7 @@
 
 class scpi {
 public:
-    virtual void send(std::string s) = 0;
+    virtual void send(const std::string &s) = 0;
     virtual std::string recv() = 0;
     virtual double recv_number() = 0;
 };
@@ -19,7 +19,7 @@ class fake_scpi : public scpi {
 public:
     explicit fake_scpi(std::string name);
 
-    void send(std::string s) override;
+    void send(const std::string &s) override;
     std::string recv() override;
     double recv_number() override;
 };
@@ -27,27 +27,25 @@ public:
 class fd_scpi : public scpi {
 protected:
     int _fd;
-    __gnu_cxx::stdio_filebuf<char> _fb;
-    std::iostream _fs;
 
     fd_scpi(int fd);
 
 public:
     virtual ~fd_scpi();
 
-    void send(std::string s) override;
+    void send(const std::string &s) override;
     std::string recv() override;
     double recv_number() override;
 };
 
 class scpi_tcp : public fd_scpi {
 public:
-    scpi_tcp(const std::string &host, int port);
+    scpi_tcp(const std::string &host, const std::string &port);
 };
 
 class scpi_tty : public fd_scpi {
 public:
-    scpi_tty(const std::string &dev);
+    scpi_tty(const std::string &dev, int baud, int stop);
 };
 
 using chnl_map = std::map<std::string, std::unique_ptr<scpi>>;
