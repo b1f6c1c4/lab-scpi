@@ -73,6 +73,7 @@ namespace step {
 
     struct delay : step {
         int seconds;
+        int nanoseconds;
 
         int accept(step_visitor &sv) override { return sv.visit(*this); }
     };

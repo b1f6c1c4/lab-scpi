@@ -49,6 +49,8 @@ bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
 bool c4::yml::read(const ryml::NodeRef &n, step::step_group *obj) {
     if (n.has_child("digest"))
         parse_path(n["digest"], obj->digest);
+    else
+        obj->digest.clear();
     if (n.has_child("vertical"))
         n["vertical"] >> obj->vertical;
     else
@@ -60,19 +62,32 @@ bool c4::yml::read(const ryml::NodeRef &n, step::step_group *obj) {
 bool c4::yml::read(const ryml::NodeRef &n, step::confirm *obj) {
     if (n.has_child("prompt"))
         n["prompt"] >> obj->prompt;
+    else
+        obj->prompt = "<Y/N?>";
     return true;
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::user_input *obj) {
     if (n.has_child("prompt"))
         n["prompt"] >> obj->prompt;
+    else
+        obj->prompt = "<Y/N?>";
     if (n.has_child("unit"))
         n["unit"] >> obj->unit;
+    else
+        obj->unit = "";
     return true;
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::delay *obj) {
-    n["seconds"] >> obj->seconds;
+    if (n.has_child("seconds"))
+        n["seconds"] >> obj->seconds;
+    else
+        obj->seconds = 0;
+    if (n.has_child("nanoseconds"))
+        n["nanoseconds"] >> obj->nanoseconds;
+    else
+        obj->nanoseconds = 0;
     return true;
 }
 
@@ -86,6 +101,8 @@ bool c4::yml::read(const ryml::NodeRef &n, step::recv *obj) {
     n["channel"] >> obj->channel;
     if (n.has_child("unit"))
         n["unit"] >> obj->unit;
+    else
+        obj->unit = "";
     return true;
 }
 

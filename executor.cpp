@@ -1,8 +1,9 @@
 #include "executor.hpp"
 
+#include <cassert>
+#include <ctime>
 #include <iostream>
 #include <limits>
-#include <cassert>
 
 #include "fancy_cin.hpp"
 
@@ -165,7 +166,11 @@ int executor::visit(step::user_input &step) {
 }
 
 int executor::visit(step::delay &step) {
-    return sleep(step.seconds) ? -1 : 0;
+    timespec rq{
+        .tv_sec = step.seconds,
+        .tv_nsec = step.nanoseconds,
+    };
+    return nanosleep(&rq, nullptr) ? -1 : 0;
 }
 
 int executor::visit(step::send &step) {
