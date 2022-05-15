@@ -115,17 +115,17 @@ int executor::exec(step::steps_t &steps) {
         _profile->current.push_back(0);
     assert(_depth < _profile->current.size());
     auto &pcd = _profile->current[_depth];
-    if (pcd == steps.size()) {
-        _profile->current.pop_back();
+    if (pcd >= steps.size()) {
+        if (_depth)
+            _profile->current.pop_back();
         return 0;
     }
     steps[pcd]->status = step::step::CURRENT;
     if (is_new && !dynamic_cast<step::step_group *>(steps[pcd].get()))
         return 1;
     _ns = &steps;
-    if (auto ans = steps[pcd]->accept(*this)) {
+    if (auto ans = steps[pcd]->accept(*this))
         return ans;
-    }
     steps[pcd]->status = step::step::FINISHED;
     pcd++;
     if (pcd < steps.size()) {

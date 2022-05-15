@@ -74,9 +74,9 @@ again:
 double fd_scpi::recv_number() {
     auto str = recv();
     char *end;
-    if (auto val = std::strtof(str, &end); *end)
+    if (auto val = std::strtof(str.data(), &end); *end)
         return val;
-    throw std::runtime_error{ "recv_number: Got " + std::to_string(str) };
+    throw std::runtime_error{ "recv_number: Got " + str };
 }
 
 scpi_tcp::scpi_tcp(const std::string &host, const std::string &port) :

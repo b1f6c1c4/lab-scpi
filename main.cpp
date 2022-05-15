@@ -165,13 +165,21 @@ int main(int argc, char *argv[]) {
             case normal::QUIT_NO_SAVE:
                 return 0;
             case normal::RUN:
-                while (exc.run()) {
-                    if (auto ui = fancy::check_sig(); ui.kind) {
-                        std::cout << "Interrupted" << std::endl;
-                        break;
+                try {
+                    while (exc.run()) {
+                        if (auto ui = fancy::check_sig(); ui.kind) {
+                            std::cout << "Interrupted" << std::endl;
+                            break;
+                        }
+                        fmt.show();
                     }
                     fmt.show();
+                } catch (const std::exception &e) {
+                    fmt.show();
+                    std::cout << "The following error occurred: " << std::endl;
+                    std::cout << e.what();
                 }
+                break;
             case normal::REFRESH:
                 fmt.show();
                 break;
