@@ -177,25 +177,27 @@ scpi_tty::scpi_tty(const std::string &dev, int baud, int stop) :
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<scpi> *obj) {
-    auto &&o = n[0].key();
-    if (o == "tcp") {
+    if (auto env = std::getenv("VIRT"); env && *env) {
+        *obj = std::make_unique<fake_scpi>("f-" + n[0].val());
+        return true;
+    }
+    auto &&o = n.val_tag();
+    if (o == "!tcp") {
         std::string host;
         std::string port;
-        n[0]["host"] >> host;
-        n[0]["port"] >> port;
+        n["host"] >> host;
+        n["port"] >> port;
         *obj = std::make_unique<scpi_tcp>(host, port);
-    } else if (o == "tty") {
+    } else if (o == "!tty") {
         std::string dev;
         auto baud = 9600;
         auto stop = 1;
-        n[0]["dev"] >> dev;
-        if (n[0].has_child("baud"))
-            n[0]["baud"] >> baud;
-        if (n[0].has_child("stop"))
-            n[0]["stop"] >> stop;
+        n["dev"] >> dev;
+        if (n.has_child("baud"))
+            n["baud"] >> baud;
+        if (n.has_child("stop"))
+            n["stop"] >> stop;
         *obj = std::make_unique<scpi_tty>(dev, baud, stop);
-    } else if (o == "virtual") {
-        *obj = std::make_unique<fake_scpi>("f-" + n[0].val());
     } else throw std::runtime_error{ "Unknown scpi " + o };
     return true;
 }
