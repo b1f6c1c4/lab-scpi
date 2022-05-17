@@ -39,7 +39,7 @@ enum class normal {
 };
 
 normal process_normal_mode(executor &exc) {
-    std::cout << "NORMAL mode, command requested" << std::endl;
+    std::cout << "\n\nNORMAL mode, command requested" << std::endl;
 input_again:
     switch (auto ui = fancy::event_loop(); ui.kind) {
         case fancy::SIGNAL:
@@ -85,7 +85,7 @@ input_again:
                     show_help();
                     goto input_again;
                 default:
-                    std::cout << "Unexpected command " << ui.chr << std::endl;
+                    std::cout << "Unexpected command " << ui.chr << " (" << (int)ui.chr << ")" << std::endl;
                     goto input_again;
             }
         case fancy::ESCAPE:

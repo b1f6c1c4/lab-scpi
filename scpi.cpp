@@ -63,11 +63,12 @@ again:
             throw std::runtime_error{ "read: "s + std::strerror(errno) };
         default:
             auto prev = str.size();
-            if (buf[len - 1] == '\n')
+            auto last = buf[len - 1] == '\n';
+	    if (last)
                 len--;
             str.resize(len);
             memcpy(str.data() + prev, buf, len);
-            if (buf[len - 1] != '\n')
+            if (!last)
                 goto again;
             return str;
     }
@@ -76,9 +77,10 @@ again:
 double fd_scpi::recv_number() {
     auto str = recv();
     char *end;
-    if (auto val = std::strtof(str.data(), &end); *end)
+    if (auto val = std::strtof(str.data(), &end); *end != '\n' && *end != '\r' && *end != '\0')
+        throw std::runtime_error{ "recv_number: Got " + str };
+    else
         return val;
-    throw std::runtime_error{ "recv_number: Got " + str };
 }
 
 scpi_tcp::scpi_tcp(const std::string &host, const std::string &port) :
@@ -111,7 +113,7 @@ scpi_tty::scpi_tty(const std::string &dev, int baud, int stop) :
         if (fd < 0)
             throw std::runtime_error{ "open: "s + std::strerror(errno) };
         int flag = TIOCM_DTR;
-        if (ioctl(_fd, TIOCMBIC, &flag) == -1)
+        if (ioctl(fd, TIOCMBIC, &flag) == -1)
             throw std::runtime_error{ "ioctl: "s + std::strerror(errno) };
         close(fd);
         fd = open(dev.data(), O_RDWR | O_NOCTTY);
