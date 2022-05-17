@@ -117,8 +117,9 @@ int executor::exec(step::steps_t &steps) {
     assert(_depth < _profile->current.size());
     auto &pcd = _profile->current[_depth];
     if (pcd >= steps.size()) {
-        if (_depth)
-            _profile->current.pop_back();
+        if (!_depth)
+            return -1;
+        _profile->current.pop_back();
         return 0;
     }
     steps[pcd]->status = step::step::CURRENT;
@@ -134,7 +135,6 @@ int executor::exec(step::steps_t &steps) {
         return 1;
     }
     assert(_depth == _profile->current.size() - 1);
-    _profile->current.pop_back();
     return 0;
 }
 

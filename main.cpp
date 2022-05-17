@@ -12,6 +12,7 @@ NORMAL mode:
 Ctrl-D: Quit and save
 Ctrl-Q: Quit and discard
 Ctrl-\: Quit immediately
+Ctrl-S: Save but don't quit
 Ctrl-C: Interrupt
 r/Home: Reverse everything
 c/Enter: Start/Continue execution
@@ -24,7 +25,6 @@ Left: Reverse step-out
 Space: Refresh display
 
 INSERT mode:
-Ctrl-D: Abort this step
 Ctrl-C: Abort this step
 Enter: Save and proceed
 Ctrl-Q: Quit program immediately
@@ -34,6 +34,7 @@ Ctrl-Q: Quit program immediately
 enum class normal {
     QUIT_SAVE,
     QUIT_NO_SAVE,
+    SAVE_NO_QUIT,
     REFRESH,
     RUN,
 };
@@ -49,6 +50,8 @@ input_again:
             switch (ui.chr) {
                 case 'D':
                     return normal::QUIT_SAVE;
+                case 'S':
+                    return normal::SAVE_NO_QUIT;
                 case 'Q':
                     return normal::QUIT_NO_SAVE;
                 case 'M': // Enter
@@ -152,16 +155,23 @@ int main(int argc, char *argv[]) {
 
     fancy::init();
 
+    auto save = [&]{
+        if (std::ofstream fout{ argv[2] }; fout.good()) {
+            fout << profile;
+        } else {
+            std::cout << "Warning: Cannot open the file " << argv[2] << " for writing, writing to stdout instead\n\n";
+            std::cout << profile;
+        }
+    };
+
     fmt.show();
     while (true) {
         switch (process_normal_mode(exc)) {
+            case normal::SAVE_NO_QUIT:
+                save();
+                break;
             case normal::QUIT_SAVE:
-                if (std::ofstream fout{ argv[2] }; fout.good()) {
-                    fout << profile;
-                } else {
-                    std::cout << "Warning: Cannot open the file " << argv[2] << " for writing, writing to stdout instead\n\n";
-                    std::cout << profile;
-                }
+                save();
             case normal::QUIT_NO_SAVE:
                 return 0;
             case normal::RUN:
