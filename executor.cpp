@@ -135,7 +135,7 @@ int executor::exec(step::steps_t &steps) {
         return 1;
     }
     assert(_depth == _profile->current.size() - 1);
-    return 0;
+    return 1;
 }
 
 int executor::visit(step::step_group &step) {

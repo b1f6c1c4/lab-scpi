@@ -13,7 +13,9 @@ static void parse_path(const ryml::NodeRef &n, step::ref_t &path) {
     auto v = 0z;
     auto prev = 0zu;
     auto save = [&](size_t i) {
-        if (v >= 0z) {
+        if (prev == i) {
+            path.emplace_back();
+        } else if (v >= 0z) {
             path.emplace_back(static_cast<size_t>(v));
         } else {
             std::string str;
@@ -67,6 +69,10 @@ bool c4::yml::read(const ryml::NodeRef &n0, std::unique_ptr<step::step> *obj) {
     T(math);
 #undef T
     throw std::runtime_error{ "Unknown type " + o };
+}
+
+bool c4::yml::read(const NodeRef &n, step::steps_t *obj) {
+    return c4::yml::read(n, static_cast<std::vector<std::unique_ptr<step::step>> *>(obj));
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::step_group *obj) {
@@ -180,6 +186,10 @@ step::step *step::get(steps_t &steps, const ref_t &cont) {
     step *last{};
     for (auto ptr = &steps; auto &&ref : cont) {
         if (ref.index() == 0) {
+            ptr = ptr->parent;
+            continue;
+        }
+        if (ref.index() == 1) {
             last = ptr->at(std::get<size_t>(ref)).get();
         } else {
             auto &s = std::get<std::string>(ref);
@@ -191,17 +201,25 @@ step::step *step::get(steps_t &steps, const ref_t &cont) {
             throw std::runtime_error{ "Cannot find ref " + s };
         }
 found:
-        if (auto grp = dynamic_cast<step_group *>(last); grp)
+        if (auto grp = dynamic_cast<step_group *>(last))
             ptr = &grp->steps;
     }
     return last;
+}
+
+void step::resolve_parent(steps_t &steps) {
+    for (auto &st : steps)
+        if (auto grp = dynamic_cast<step_group *>(st.get())) {
+            grp->steps.parent = &steps;
+            resolve_parent(grp->steps);
+        }
 }
 
 step::step *profile_t::operator()() {
     step::step *last{};
     for (auto ptr = &steps; auto id : current) {
         last = ptr->at(id).get();
-        if (auto grp = dynamic_cast<step::step_group *>(last); grp)
+        if (auto grp = dynamic_cast<step::step_group *>(last))
             ptr = &grp->steps;
     }
     return last;

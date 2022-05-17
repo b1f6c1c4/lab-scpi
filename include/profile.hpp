@@ -33,8 +33,11 @@ struct step_visitor {
 
 namespace step {
 
-    using steps_t = std::vector<std::unique_ptr<step>>;
-    using ref_t = std::vector<std::variant<size_t, std::string>>;
+    struct steps_t : std::vector<std::unique_ptr<step>> {
+        steps_t *parent{};
+    };
+
+    using ref_t = std::vector<std::variant<std::monostate, size_t, std::string>>;
 
     struct step {
         std::string id;
@@ -124,6 +127,7 @@ namespace step {
     };
 
     step *get(steps_t &steps, const ref_t &cont);
+    void resolve_parent(steps_t &steps);
 }
 
 struct profile_t {
@@ -140,6 +144,7 @@ std::ostream &operator<<(std::ostream &os, const profile_t &cpp);
 namespace c4::yml {
     class NodeRef;
     bool read(const NodeRef &n, std::unique_ptr<step::step> *obj);
+    bool read(const NodeRef &n, step::steps_t *obj);
     bool read(const NodeRef &n, step::step_group *obj);
     bool read(const NodeRef &n, step::confirm *obj);
     bool read(const NodeRef &n, step::user_input *obj);

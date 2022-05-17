@@ -141,6 +141,7 @@ int main(int argc, char *argv[]) {
 
     profile_t profile;
     tree["steps"] >> profile.steps;
+    step::resolve_parent(profile.steps);
 
     if (std::ifstream fin{ argv[2] }; fin.good()) {
         fin >> profile;
