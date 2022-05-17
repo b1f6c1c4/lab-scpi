@@ -3,6 +3,7 @@
 #include <memory>
 #include <deque>
 #include <string>
+#include <variant>
 #include <vector>
 
 struct profile;
@@ -33,8 +34,10 @@ struct step_visitor {
 namespace step {
 
     using steps_t = std::vector<std::unique_ptr<step>>;
+    using ref_t = std::vector<std::variant<size_t, std::string>>;
 
     struct step {
+        std::string id;
         std::string name;
         enum {
             QUEUED,
@@ -53,7 +56,7 @@ namespace step {
 
     struct step_group : step {
         steps_t steps;
-        std::vector<size_t> digest;
+        ref_t digest;
         bool vertical;
 
         int accept(step_visitor &sv) override { return sv.visit(*this); }
@@ -105,7 +108,7 @@ namespace step {
                 REFERENCE,
             } kind;
             double value;
-            std::vector<size_t> index;
+            ref_t index;
             double operator()(steps_t &steps);
         };
 
@@ -120,16 +123,7 @@ namespace step {
         int accept(step_visitor &sv) override { return sv.visit(*this); }
     };
 
-    template <typename TContainer>
-    auto get(steps_t &steps, TContainer &&cont) {
-        step *last{};
-        for (auto ptr = &steps; auto &&id : cont) {
-            last = ptr->at(id).get();
-            if (auto grp = dynamic_cast<step_group *>(last); grp)
-                ptr = &grp->steps;
-        }
-        return last;
-    }
+    step *get(steps_t &steps, const ref_t &cont);
 }
 
 struct profile_t {
@@ -137,7 +131,7 @@ struct profile_t {
     step::steps_t steps;
     std::deque<size_t> current;
 
-    step::step &operator()();
+    step::step *operator()();
 };
 
 std::istream &operator>>(std::istream &is, profile_t &cpp);

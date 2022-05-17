@@ -39,7 +39,7 @@ void executor::reverse_step_in() {
         return;
     if (_profile->current.back()-- == 0)
         _profile->current.pop_back();
-    else if (auto grp = dynamic_cast<step::step_group *>(step::get(_profile->steps, _profile->current)))
+    else if (auto grp = dynamic_cast<step::step_group *>(_profile->operator()()))
         _profile->current.push_back(grp->steps.size());
     _depth = 0;
     revt(_profile->steps);

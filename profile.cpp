@@ -7,25 +7,47 @@
 #include <sstream>
 #include <json.hpp>
 
-static void parse_path(const ryml::NodeRef &n, std::vector<size_t> &path) {
-    std::string str;
-    n >> str;
-    std::stringstream ss{ str };
-    while (!ss.eof()) {
-        std::string line;
-        std::getline(ss, line, '.');
-        if (line.size())
-            path.push_back(std::stoul(line));
+static void parse_path(const ryml::NodeRef &n, step::ref_t &path) {
+    path.clear();
+    auto cs = n.val();
+    auto v = 0z;
+    auto prev = 0zu;
+    auto save = [&](size_t i) {
+        if (v >= 0z) {
+            path.emplace_back(static_cast<size_t>(v));
+        } else {
+            std::string str;
+            str.resize(i - prev);
+            std::memcpy(str.data(), &cs.str[prev], i - prev);
+            path.emplace_back(std::move(str));
+        }
+    };
+    for (auto i = 0zu; i < cs.len; i++) {
+        auto ch = cs.str[i];
+        if (ch >= '0' && ch <= '9') {
+            v *= 10, v += ch - '0';
+        } else if (ch == '.') {
+            save(i);
+            v = 0z, prev = i + 1;
+        } else {
+            v = -1z;
+        }
     }
+    save(cs.len);
 }
 
-bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
+bool c4::yml::read(const ryml::NodeRef &n0, std::unique_ptr<step::step> *obj) {
+    auto &n = n0.has_val_tag() ? n0 : n0[0];
     auto &&o = n.val_tag();
 #define T(ty) \
     do { \
         if (o == "!" #ty) { \
             auto step = new step::ty{}; \
-            if (n.has_child("name")) \
+            if (!n0.has_val_tag()) \
+                step->id = n0[0].key(); \
+            else \
+                step->id = ""; \
+            if (n.is_map() && n.has_child("name")) \
                 n["name"] >> step->name; \
             else \
                 step->name = "\b"; \
@@ -43,6 +65,7 @@ bool c4::yml::read(const ryml::NodeRef &n, std::unique_ptr<step::step> *obj) {
     T(recv);
     T(recv_str);
     T(math);
+#undef T
     throw std::runtime_error{ "Unknown type " + o };
 }
 
@@ -60,6 +83,10 @@ bool c4::yml::read(const ryml::NodeRef &n, step::step_group *obj) {
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::confirm *obj) {
+    if (!n.is_map()) {
+        obj->prompt = n.val();
+        return true;
+    }
     if (n.has_child("prompt"))
         n["prompt"] >> obj->prompt;
     else
@@ -92,13 +119,13 @@ bool c4::yml::read(const ryml::NodeRef &n, step::delay *obj) {
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::send *obj) {
-    n["channel"] >> obj->channel;
+    n["ch"] >> obj->channel;
     n["cmd"] >> obj->cmd;
     return true;
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::recv *obj) {
-    n["channel"] >> obj->channel;
+    n["ch"] >> obj->channel;
     if (n.has_child("unit"))
         n["unit"] >> obj->unit;
     else
@@ -107,7 +134,7 @@ bool c4::yml::read(const ryml::NodeRef &n, step::recv *obj) {
 }
 
 bool c4::yml::read(const ryml::NodeRef &n, step::recv_str *obj) {
-    n["channel"] >> obj->channel;
+    n["ch"] >> obj->channel;
     return true;
 }
 
@@ -149,8 +176,35 @@ bool c4::yml::read(const ryml::NodeRef &n, step::math *obj) {
     return true;
 }
 
-step::step &profile_t::operator()() {
-    return *step::get(steps, current);
+step::step *step::get(steps_t &steps, const ref_t &cont) {
+    step *last{};
+    for (auto ptr = &steps; auto &&ref : cont) {
+        if (ref.index() == 0) {
+            last = ptr->at(std::get<size_t>(ref)).get();
+        } else {
+            auto &s = std::get<std::string>(ref);
+            for (auto &st : *ptr)
+                if (st->id == s) {
+                    last = st.get();
+                    goto found;
+                }
+            throw std::runtime_error{ "Cannot find ref " + s };
+        }
+found:
+        if (auto grp = dynamic_cast<step_group *>(last); grp)
+            ptr = &grp->steps;
+    }
+    return last;
+}
+
+step::step *profile_t::operator()() {
+    step::step *last{};
+    for (auto ptr = &steps; auto id : current) {
+        last = ptr->at(id).get();
+        if (auto grp = dynamic_cast<step::step_group *>(last); grp)
+            ptr = &grp->steps;
+    }
+    return last;
 }
 
 namespace nlohmann {
@@ -173,8 +227,7 @@ namespace nlohmann {
                 j["steps"].get_to(st->steps);
         }
 
-        static void to_json(nlohmann::json &j, const std::unique_ptr<step::step> &step) {
-            j["name"] = step->name;
+        static void to_json(json &j, const std::unique_ptr<step::step> &step) {
             j["status"] = step->status;
             if (auto st = dynamic_cast<step::valued_step *>(step.get()); st)
                 j["value"] = st->value;
@@ -186,16 +239,19 @@ namespace nlohmann {
     };
 
     void adl_serializer<step::steps_t>::from_json(const json &j, step::steps_t &vec) {
-        for (auto it = vec.begin(); auto &k : j) {
-            if (it == vec.end())
-                throw std::runtime_error{ "Size not match: json is " + std::to_string(j.size()) + " steps_t is " + std::to_string(vec.size()) };
-            k.get_to(*it++);
+        for (auto &[k, v] : j.items()) {
+            for (auto &st : vec)
+                if (st->id == k) {
+                    v.get_to(st);
+                    break;
+                }
         }
     }
     void adl_serializer<step::steps_t>::to_json(json &j, const step::steps_t &vec) {
         j = {};
-        for (auto &v : vec)
-            j.push_back(v);
+        for (auto &st : vec)
+            if (!st->id.empty())
+                j[st->id] = st;
     }
 
 }

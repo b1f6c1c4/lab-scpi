@@ -100,7 +100,7 @@ bad:
         try {
             st->accept(*this);
         } catch (const std::exception &e) {
-            std::cout << e.what();
+            std::cout << "\n{{{" << e.what() << "}}}\n";
         }
     }
     _depth--;

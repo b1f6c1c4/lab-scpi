@@ -77,7 +77,7 @@ again:
 double fd_scpi::recv_number() {
     auto str = recv();
     char *end;
-    if (auto val = std::strtof(str.data(), &end); *end != '\n' && *end != '\r' && *end != '\0')
+    if (auto val = std::strtod(str.data(), &end); *end != '\n' && *end != '\r' && *end != '\0')
         throw std::runtime_error{ "recv_number: Got " + str };
     else
         return val;
