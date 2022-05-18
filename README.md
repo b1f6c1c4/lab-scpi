@@ -30,8 +30,11 @@
       - !send {channel: ps, cmd: 'OUTP ON'}
       - !delay {seconds: 1}
       - !send {channel: dmm, cmd: 'MEAS:VOLT:DC?'}
-      - !recv {channel: dmm, unit: V}
+      - U1: !recv {channel: dmm, unit: V}
       - !send {channel: ps, cmd: 'OUTP OFF'}
+      - !send {channel: dmm, cmd: 'MEAS:VOLT:DC?'}
+      - U2: !recv {channel: dmm, unit: V}
+      - U: !math {op: '-', operands: ['U1', 'U2'], unit: V}
     ```
 
 1. Download and compile `lab-scpi`:
